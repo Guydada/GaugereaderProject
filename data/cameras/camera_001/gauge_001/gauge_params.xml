@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gauge>
+	<needle>
+		<point1>332</point1>
+		<point1>117</point1>
+		<point2>285</point2>
+		<point2>176</point2>
+		<width>10</width>
+		<min_angle>158.532</min_angle>
+		<max_angle>-79.327</max_angle>
+		<max_cur_angle_diff>201.468</max_cur_angle_diff>
+	</needle>
+	<min_value>-7.0</min_value>
+	<max_value>30.0</max_value>
+	<units>knots</units>
+	<angle_diff>-237.859</angle_diff>
+	<value_diff>37.0</value_diff>
+	<max_angle>-79.327</max_angle>
+	<min_angle>158.532</min_angle>
+	<center>243</center>
+	<center>223</center>
+	<width>500</width>
+	<height>500</height>
+</gauge>
