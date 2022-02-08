@@ -2,15 +2,8 @@ import cv2
 from dataclasses import dataclass
 
 
-class Input:
-    def __init__(self,
-                 frame: cv2.VideoCapture,
-                 camera_id: str):
-        pass
-
-
 @dataclass
-class Output:
+class GaugeOutput:
     time_stamp: str
     camera_id: str
     gauge_id: str
@@ -22,3 +15,11 @@ class Output:
                f"{self.camera_id} " \
                f"{self.gauge_id} " \
                f"{self.value} {self.units}"
+
+
+class FrameOutput:
+    def __init__(self,
+                 frame: cv2.VideoCapture,
+                 timestamp: str,
+                 camera_id: str):
+        pass
