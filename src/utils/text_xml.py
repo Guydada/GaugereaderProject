@@ -8,6 +8,14 @@ dic = {'camera_001': {
     'gauge_003': {'size': '300', 'color': 'green'},
 }}
 
-dic2 = xmltodict.parse(xmltodict.unparse(dic, pretty=True))
-print(dic2)
-print(dic2['camera_001']['gauge_001']['size'])
+
+xml_text = xmltodict.unparse(dic, pretty=True)
+
+with open('test.xml', 'w') as f:
+    f.write(xml_text)
+
+with open('test.xml', 'r') as f:
+    dic2 = f.read()
+
+print(xmltodict.parse(dic2))
+

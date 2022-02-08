@@ -5,8 +5,6 @@ import src.gauges.gauge as g
 import src.utils.envconfig as env
 import src.utils.convert_xml as xml
 
-env.set_env()
-
 
 def add_camera(camera_id: str):
     """
@@ -15,55 +13,40 @@ def add_camera(camera_id: str):
     new_camera = env.create_camera_dict(camera_id)
     xml.dict_append_to_xml(new_camera, env.CAMERA_LIST_FILE)
     typer.echo(f"Added camera {camera_id} to dashboard.")
-    return camera_id
+    return None
 
 
 def add_gauge(timestamp: str,
               camera_id: str,
               index: str,
-              description: str,
-              gauge_type: str,
-              ui_calibration: bool = True,
-              calibration_image: str = None,
-              calibration_file: str = None):
+              description: str,                    #
+              gauge_type: str,                     #
+              ui_calibration: bool = True,         #
+              calibration_image: str = None,       #
+              calibration_file: str = None):       #
     """
     Add a gauge to the dashboard.
+    :param timestamp: Time of the frame
+    :param camera_id: Camera ID - unique identifier for each camera in a ship
+    :param index: Gauge index - unique inside each camera
+    :param description: Description of the gauge - free text
+    :param gauge_type: Gauge type (e.g 'analog', 'digital')
+    :param ui_calibration: If True, the gauge will be calibrated in the Calibrator app
+    :param calibration_image: Name of the calibration image. loaded from a default path in src.utils.envconfig
+    :param calibration_file: If given, the calibration file will be used - XML file
+    :return: g.Gauge object
     """
-    gauge = g.Gauge(timestamp,
-                    camera_id,
-                    index,
-                    description,
-                    gauge_type,
-                    ui_calibration,
-                    calibration_image,
-                    calibration_file)
-
-    gauge_dict = gauge.as_dict()
-    camera_list = xml.xml_to_dict(env.CAMERA_LIST_FILE)
-    camera_list[camera_id]['gauges'].append(gauge_dict)
-    xml.dict_append_to_xml(camera_list, env.CAMERA_LIST_FILE)
-    typer.echo(f"Added gauge {gauge.index} to camera {camera_id}.")
-    return gauge
+    pass
 
 
 def read_frame(camera_id: str,
                timestamp: str,
                frame_id: str):
     """
-    Read a all gauges in a frame from a camera.  # TODO check if I need to separate the reading of same frame gauges
+    Read a frame, given the camera ID, timestamp and frame, update the reading history for each gauge
+    :param camera_id: Camera ID - unique identifier for each camera in a ship
+    :param timestamp: Time of the frame
+    :param frame_id: Frame ID - For identifying frames with the same timestamp
+    :return: pd.DataFrame with the reading history for each gauge in frame
     """
     pass
-
-
-# create example timestamp
-dev_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-add_gauge(timestamp=dev_timestamp,
-          camera_id=env.DEV_CAM,
-          index=env.DEV_GAUGE,
-          description="Test gauge",
-          gauge_type="analog",
-          ui_calibration=True,
-          calibration_image=env.DEV_CALIBRATION_PHOTO)
-
-

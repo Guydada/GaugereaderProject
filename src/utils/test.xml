@@ -1,1 +1,15 @@
-<?xml version="1.0" encoding="UTF-8" ?><root><a type="int">1</a><b type="int">2</b><c type="int">3</c><d type="int">4</d><e type="dict"><f type="int">5</f><g type="int">6</g><h type="int">7</h></e></root>
+<?xml version="1.0" encoding="utf-8"?>
+<camera_001>
+	<gauge_001>
+		<size>100</size>
+		<color>red</color>
+	</gauge_001>
+	<gauge_002>
+		<size>200</size>
+		<color>blue</color>
+	</gauge_002>
+	<gauge_003>
+		<size>300</size>
+		<color>green</color>
+	</gauge_003>
+</camera_001>

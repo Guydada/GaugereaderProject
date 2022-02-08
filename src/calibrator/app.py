@@ -219,6 +219,8 @@ class Calibrator:  # TODO: add user input fo max angle and min_angle
         if self.calibration_image is not None:
             self.open_img(image=calibration_image)
 
+        self.run()
+
     # Image loading methods
 
     def open_img(self,
@@ -449,10 +451,10 @@ class Calibrator:  # TODO: add user input fo max angle and min_angle
             x_diff, y_diff = self.start_x + diff, self.start_y + diff
             res = False
         cropped_image = self.proc_cv[y:y_diff, x:x_diff]
-        cropped_image = cv2.resize(cropped_image, env.TRAIN_IMAGE_SIZE)
+        cropped_image = cv2.resize(cropped_image, env.EDIT_IMAGE_SIZE)
         cv2.imwrite(self.train_image_path, cropped_image)
 
-        self.open_img(env.TRAIN_IMAGE_NAME,
+        self.open_img(env.EDIT_IMAGE_SIZE,
                       keep_window=True,
                       resize=res)
         self.cropped = True
@@ -628,13 +630,12 @@ class Calibrator:  # TODO: add user input fo max angle and min_angle
             return
         if self.mask_error_check():
             return
-        if self.params_set:
-            return
-        for tag in self.tags:
-            self.calibration[tag] = self.canvas.find_withtag(tag)
+        self.calibration['max_angle'] = self.calibration['needle']['max_angle']
+        self.calibration['min_angle'] = self.calibration['needle']['min_angle']
+        self.calibration['center'] = (self.x, self.y)
         self.calibration['width'] = self.w
         self.calibration['height'] = self.h
-        xmlr.dict_to_xml(self.calibration, self.xml_file)
+        xmlr.dict_to_xml(self.calibration, self.xml_file, gauge=True)
         typer.secho('Saved parameters to {}'.format(self.xml_file), fg='green')
 
     # Image detection/text input frame methods
@@ -815,6 +816,8 @@ class Calibrator:  # TODO: add user input fo max angle and min_angle
         self.needle_rotation_scale.config(from_=0, to=self.angle_diff)
         self.calibration['angle_diff'] = self.angle_diff
         self.calibration['value_diff'] = self.value_diff
+        self.calibration['max_angle'] = self.calibration['needle']['max_angle']
+        self.calibration['min_angle'] = self.calibration['needle']['min_angle']
         self.needle_rotation_scale.set(0)
         self.current_reading = self.calibration['min_value']
         reading_text = f'Current reading: {self.current_reading}'
@@ -901,7 +904,6 @@ class Calibrator:  # TODO: add user input fo max angle and min_angle
         self.window.mainloop()
         return self.calibration
 
-
-dev_app = Calibrator(calibration_image=env.DEV_CALIBRATION_PHOTO,
-                     camera_id=env.DEV_CAM,
-                     index=env.DEV_GAUGE).run()
+# dev_app = Calibrator(calibration_image=env.DEV_CALIBRATION_PHOTO,
+#                      camera_id=env.DEV_CAM,
+#                      index=env.DEV_GAUGE).run()
