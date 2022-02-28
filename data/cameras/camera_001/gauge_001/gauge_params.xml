@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gauge>
 	<needle>
-		<point1>332</point1>
-		<point1>117</point1>
-		<point2>285</point2>
-		<point2>176</point2>
+		<point1>327</point1>
+		<point1>118</point1>
+		<point2>286</point2>
+		<point2>174</point2>
 		<width>10</width>
 		<min_angle>158.532</min_angle>
 		<max_angle>-79.327</max_angle>

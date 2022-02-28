@@ -8,11 +8,10 @@ import PIL.Image as Image
 import PIL.ImageFilter as ImageFilter
 import cv2
 
-import torch
-
 from torch.utils.data import DataLoader
 
 import src.model.dataset_class as img_dataset
+import src.model.train_model as tm
 
 import src.calibrator.app as calibrator
 
@@ -27,7 +26,6 @@ class Gauge:
                  camera_id: str,
                  index: str,
                  description: str,
-                 gauge_type: str,
                  ui_calibration: bool = True,
                  calibration_image: str = None,
                  calibration_file: str = None):
@@ -37,9 +35,6 @@ class Gauge:
         self.camera_id = camera_id
         self.index = index
         self.description = description
-        self.gauge_type = gauge_type
-        if gauge_type not in env.GAUGE_TYPES:
-            raise ValueError(f'Gauge type {gauge_type} not supported')
         self.calibration_image = calibration_image
         self.calibration = None
 
@@ -49,26 +44,16 @@ class Gauge:
         self.calibrated = False
 
         # Calibration
-        if calibration_file is not None:  # TODO: Parse XML file to get the same dictionary
+        self.calibrator_app = None
+        if calibration_file is not None:
             self.calibrate_from_xml()
-        elif ui_calibration:  # TODO: prompt for calibration if given
-            self.ui_calibrate()
-        else:
+        elif calibration_file is None and not ui_calibration:
             raise ValueError('No calibration data given and no UI calibration requested')
 
     def _init_directory(self):  # TODO: add overwrite/skip option
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
             typer.echo(f'Created directory {self.directory}')
-
-    def ui_calibrate(self) -> None:
-        ca = calibrator.Calibrator(calibration_image=self.calibration_image,
-                                   index=self.index,
-                                   camera_id=self.camera_id,
-                                   gauge_type=self.gauge_type)
-        self.calibration = ca.run()
-        self.calibrated = True
-        return None
 
     def calibrate_from_xml(self):
         """
@@ -113,7 +98,6 @@ class AnalogGauge(Gauge):
                          camera_id=camera_id,
                          index=index,
                          description=description,
-                         gauge_type='analog',
                          ui_calibration=ui_calibration,
                          calibration_image=calibration_image,
                          calibration_file=calibration_file)
@@ -132,6 +116,13 @@ class AnalogGauge(Gauge):
         self.scores = None
         self.train_image_set = None
         self.test_image_set = None
+        self.train_data_loader = None
+        self.test_data_loader = None
+
+        self.calibrator_app = calibrator.AnalogCalibrator(calibration_image=calibration_image,
+                                                          index=index,
+                                                          camera_id=camera_id)
+        self.calibrator_app.run()
 
     def create_train_test_set(self,
                               train_size: float = 0.8,
@@ -204,17 +195,26 @@ class AnalogGauge(Gauge):
             else:
                 self.test_df = self.test_df.append(pd.DataFrame([[image_name, True, angle]], columns=self.data_cols))
 
-    def init_train(self,
-                   model_name: str,
-                   transform = None,
-                   evaluate: bool = False):
+    def train(self,
+              model,
+              optimizer,
+              criterion,
+              epochs: int = env.EPOCHS,
+              device: str = env.DEVICE,
+              plot: bool = False):
         if not self.calibrated:
             raise ValueError('Gauge not calibrated')
         self.train_image_set = img_dataset.ImageDataset(gauge_directory=self.directory,
-                                                        set_type='train',
-                                                        transform=transform)
-        train_data_loader = DataLoader(self.train_image_set,
-                                       batch_size=env.BATCH_SIZE,
-                                       shuffle=False,
-                                       num_workers=env.NUM_WORKERS)
-
+                                                        set_type='train')
+        self.train_data_loader = DataLoader(self.train_image_set,
+                                            batch_size=env.BATCH_SIZE,
+                                            shuffle=False,
+                                            num_workers=env.NUM_WORKERS)
+        tm.train_model(model,
+                       train_loader=self.train_data_loader,
+                       optimizer=optimizer,
+                       criterion=criterion,
+                       epochs=epochs,
+                       device=device,
+                       plot=plot)
+        return None

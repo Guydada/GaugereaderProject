@@ -15,11 +15,3 @@ class GaugeOutput:
                f"{self.camera_id} " \
                f"{self.gauge_id} " \
                f"{self.value} {self.units}"
-
-
-class FrameOutput:
-    def __init__(self,
-                 frame: cv2.VideoCapture,
-                 timestamp: str,
-                 camera_id: str):
-        pass

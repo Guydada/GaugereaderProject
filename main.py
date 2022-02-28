@@ -1,9 +1,9 @@
 import typer
-import datetime
 
-import src.reader.input_output as io
 import src.utils.envconfig as env
 import src.utils.convert_xml as xml
+
+# TODO: add CLI interface
 
 
 def add_camera(camera_id: str):
@@ -49,6 +49,6 @@ def read_frame(camera_id: str,
     :param camera_id: Camera ID - unique identifier for each camera in a ship
     :param timestamp: Time of the frame
     :param frame_id: Frame ID - For identifying frames with the same timestamp
-    :return: A io.FrameOutput object containing the reading Dataclass objects of each gauge in the frame
+    :return: A io.GaugeOutput object containing the reading Dataclass objects of each gauge in the frame
     """
     pass

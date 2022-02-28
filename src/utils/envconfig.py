@@ -1,25 +1,27 @@
 import os
 import src.utils.convert_xml as xmlr
 import typer
+import torch
 from pathlib import Path
 
 # Roots and directories
-PROJECT_ROOT = Path(__file__).parent.parent.parent           # Root of the project
-DEFAULT_PATH = PROJECT_ROOT.joinpath("data")                 # Default path to the data directory
-CALIBRATION_PATH = DEFAULT_PATH.joinpath("calibration_data")      # Path to the calibration_data directory
-CAMERAS_PATH = DEFAULT_PATH.joinpath("cameras")              # Path to the cameras directory
-FRAMES_PATH = DEFAULT_PATH.joinpath("frames")                # Path to the frames directory
-CAMERA_LIST_FILE = CAMERAS_PATH.joinpath("camera_list.xml")  # Path to the camera list file
-SAVE_EXT = '.pkl'                                            # Extension for the saved files
-DEV_CAM = 'camera_001'                                       # Name of the development camera
-DEV_GAUGE = 'gauge_001'                                      # Name of the development gauge
-DEV_CALIBRATION_PHOTO = 'Speed.jpg'                          # Name of the development calibration_data photo
-GAUGE_CALIBRATION_FILE_XML = 'gauge_params.xml'              # Name of the gauge calibration_data file
-TRAIN_IMAGE_NAME = 'train_image.jpg'                         # Name of the training image
-NEEDLE_IMAGE_NAME = 'needle_image.jpg'                       # Name of the needle image
-TRAIN_SET_DIR_NAME = 'train_set'                             # Name of the training set directory
-VALIDATION_SET_DIR_NAME = 'validation_set'                   # Name of the validation set directory
-dir_list = [DEFAULT_PATH,                                    # List of directories to create
+PROJECT_ROOT = Path(__file__).parent.parent.parent            # Root of the project
+SAVED_MODELS_DIR = PROJECT_ROOT.joinpath("models")            # Directory for saved models
+DEFAULT_PATH = PROJECT_ROOT.joinpath("data")                  # Default path to the data directory
+CALIBRATION_PATH = DEFAULT_PATH.joinpath("calibration_data")  # Path to the calibration_data directory
+CAMERAS_PATH = DEFAULT_PATH.joinpath("cameras")               # Path to the cameras directory
+FRAMES_PATH = DEFAULT_PATH.joinpath("frames")                 # Path to the frames directory
+CAMERA_LIST_FILE = CAMERAS_PATH.joinpath("camera_list.xml")   # Path to the camera list file
+SAVE_EXT = '.pkl'                                             # Extension for the saved files
+DEV_CAM = 'camera_001'                                        # Name of the development camera
+DEV_GAUGE = 'gauge_001'                                       # Name of the development gauge
+DEV_CALIBRATION_PHOTO = 'Speed.jpg'                           # Name of the development calibration_data photo
+GAUGE_CALIBRATION_FILE_XML = 'gauge_params.xml'               # Name of the gauge calibration_data file
+TRAIN_IMAGE_NAME = 'train_image.jpg'                          # Name of the training image
+NEEDLE_IMAGE_NAME = 'needle_image.jpg'                        # Name of the needle image
+TRAIN_SET_DIR_NAME = 'train_set'                              # Name of the training set directory
+VALIDATION_SET_DIR_NAME = 'validation_set'                    # Name of the validation set directory
+dir_list = [DEFAULT_PATH,                                     # List of directories to create
             CALIBRATION_PATH,
             CAMERAS_PATH,
             FRAMES_PATH]
@@ -43,6 +45,9 @@ IMAGE_TEST_SET_SIZE = BATCH_SIZE
 
 # Gauge Types
 GAUGE_TYPES = ['analog', 'digital']
+
+# Torch parameters
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Functions
@@ -150,3 +155,5 @@ def set_env():
     check_dirs()
     create_camera_list()
     return None
+
+

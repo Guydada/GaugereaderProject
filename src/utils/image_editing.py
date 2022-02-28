@@ -4,17 +4,27 @@ import torch
 import numpy as np
 from PIL import ImageFilter
 import PIL.Image as Image
+import PIL.ImageTk as ImageTk
 import torchvision.transforms as tf
 import src.utils.envconfig as env
 
 
-def rotate_image(image, angle, center):
-    rot_mat = cv2.getRotationMatrix2D(center, angle, 1.0)
-    result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], borderMode=cv2.BORDER_TRANSPARENT,)
-    return result
+def cv_to_imagetk(image):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
+    image = ImageTk.PhotoImage(image)
+    return image
 
 
-def rotate_image2(img, angle, pivot):
+def cv_to_image(cv_image, show: bool = False):
+    image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
+    if show:
+        image.show()
+    return image
+
+
+def rotate_image(img, angle, pivot):
     img = Image.fromarray(img)
     rotated = img.rotate(angle, center=pivot)
     return np.array(rotated)
@@ -25,7 +35,7 @@ def rotate_needle(train_image: np.ndarray,
                   needle_center: tuple,
                   needle_angle: float,
                   return_needle: bool = False):
-    rotated_needle = rotate_image2(needle_image, needle_angle, needle_center)
+    rotated_needle = rotate_image(needle_image, needle_angle, needle_center)
     mask = cv2.cvtColor(rotated_needle, cv2.COLOR_BGR2GRAY)
     mask = cv2.threshold(mask, 10, 255, cv2.THRESH_BINARY)[1]
     mask_inv = cv2.bitwise_not(mask)
@@ -36,22 +46,30 @@ def rotate_needle(train_image: np.ndarray,
     return blended
 
 
+def create_circle(obj,
+                  x,
+                  y,
+                  r,
+                  **kwargs):
+    """
+    Create a circle with the given parameters, implemented using the tkinter canvas drawing
+    object method
+    :param obj:
+    :param x:
+    :param y:
+    :param r:
+    :param kwargs:
+    :return:
+    """
+    return obj.create_oval(x - r, y - r, x + r, y + r, **kwargs)
+
+
 scale = list(np.linspace(0.81, 0.99, 10))
+
 
 process_image = tf.Compose([tf.Resize(env.TRAIN_IMAGE_SIZE),
                             tf.ToTensor(),
                             tf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-image_augmentor = tf.Compose([tf.RandomApply([tf.ColorJitter(0.2, 0.2, 0.2, 0.2)], p=0.5),
-                              tf.RandomApply([tf.RandomAffine(degrees=5, translate=(0.1, 0.1), scale=(0.9, 1.1))], p=0.1),
-                              tf.RandomApply([tf.RandomPerspective(distortion_scale=np.random.choice(scale), p=0.5)], p=0.5)])
-
-
-
-
-
-
-
-
-
-
+image_augmentor = tf.Compose([tf.RandomApply([tf.ColorJitter(0.1, 0.1, 0.1, 0.1)], p=0.5)])
+                              # tf.RandomApply([tf.RandomRotation(0.5)], p=0.25)])
