@@ -2,6 +2,7 @@ import typer
 
 import src.utils.envconfig as env
 import src.utils.convert_xml as xml
+import src.utils.input_output as io
 
 # TODO: add CLI interface
 
@@ -51,4 +52,6 @@ def read_frame(camera_id: str,
     :param frame_id: Frame ID - For identifying frames with the same timestamp
     :return: A io.GaugeOutput object containing the reading Dataclass objects of each gauge in the frame
     """
+    # result = io.GaugeOutput()
+    # return result
     pass
