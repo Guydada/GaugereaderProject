@@ -941,6 +941,10 @@ class AnalogCalibrator(Calibrator):
         self.calibration['min_angle'] = min_angle
 
     def update_reading(self):
+        """
+        Update the reading label with the current reading.
+        :return: None
+        """
         value = abs(self.needle_rotation_scale.get() * self.value_diff / self.angle_diff)
         self.current_reading = self.calibration['min_value'] + value
         self.buttons['read_value'].config(text='Current Reading: \n '
