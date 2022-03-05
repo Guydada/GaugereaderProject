@@ -48,18 +48,23 @@ class Calibrator:
         self.current_image_path = None
 
         # Images
-        self.orig_cv = None
-        self.proc_cv = None
-        self.orig_im = None
-        self.proc_im = None
+        self.backup_cv = None
+        self.img_cv = None
+        self.img_im = None
 
         # Calibration data and parameters
         self.draw_params = {}  # placeholder for params of image editing
         self.calibration = {}
         self.current_reading = 0
 
+        # Specific Buttons and top frames containers
+        self.step_buttons = {}
+        self.buttons = {}
+        self.top_frames = {}
+
         # BOOL variables for error checking
         self.error_flags = {'cropped': False,
+                            'perspective': False,
                             'parameters': False}
 
         # Image variables
@@ -70,6 +75,8 @@ class Calibrator:
         self.create_main_window()
         self.canvas = None
         self.canvas_image = None
+        self.grid_size = 50
+        self.button_width = 18
 
         # Menubar Frame
         self.menubar = tk.Menu(self.window)
@@ -77,9 +84,8 @@ class Calibrator:
 
         # Main toolbar Frame # TODO: add editor functions
         self.toolbar_frame = tk.Frame(self.window)
-        self.crop_button = None
         self.brush_size_bar = None
-        self.brush_size = 10  # default brush size
+        self.brush_size = 8  # default brush size
         self.create_toolbar_frame()
 
         # Image Frame settings
@@ -93,6 +99,11 @@ class Calibrator:
         # Image editing variables
         self.active_button = None
         self.active_shape = None
+        self.perspective_bar = {}
+
+        # Calibration specific toolbar
+        self.calibration_toolbar = None
+        self.create_calibration_toolbar()
 
         # Location Variables for drawing and locating items
         self.start_x = 0
@@ -103,9 +114,15 @@ class Calibrator:
         self.color = 'red'
         self.draw = None
 
-        # Specific Buttons and top frames containers
-        self.buttons = {}
-        self.top_frames = {}
+        # Perspective transform variables
+        self.perspective_transform = None
+        self.perspective_transform_points = []
+        self.perspective_values = {'top': [0, 0],
+                                   'bottom': [self.w, 0],
+                                   'left': [0, self.h],
+                                   'right': [self.w, self.h]}
+
+        self.perspective_im = None
 
     def create_main_window(self):
         """
@@ -137,12 +154,10 @@ class Calibrator:
         """
         self.toolbar_frame = tk.Frame(self.window)
         self.toolbar_frame.pack(side=tk.TOP, fill=tk.BOTH)
-        tk.Button(self.toolbar_frame, text='Reset', command=self.reset_to_start).pack(side=tk.LEFT)
+        tk.Button(self.toolbar_frame, text='Reset', command=self.load_image_from_file).pack(side=tk.LEFT)
         tk.Button(self.toolbar_frame, text='Edit', command=self.create_image_edit_frame).pack(side=tk.LEFT)
-        self.crop_button = tk.Button(self.toolbar_frame, text="Crop", command=self.use_crop)
         self.brush_size_bar = tk.Scale(self.toolbar_frame, from_=1, to=50, orient=tk.HORIZONTAL, label='Line width')
         self.brush_size_bar.set(self.brush_size)
-        self.crop_button.pack(side=tk.LEFT)
         self.brush_size_bar.pack(side=tk.RIGHT)
 
     def create_image_edit_frame(self):  # TODO: implement color options, perspective correction, etc.
@@ -160,6 +175,59 @@ class Calibrator:
         self.gauge_steps_frame = tk.Frame(self.window)
         self.gauge_steps_frame.pack(side=tk.LEFT, fill=tk.BOTH)
         tk.Label(self.gauge_steps_frame, text='Steps').pack(side=tk.TOP)
+        self.step_buttons['crop'] = tk.Button(self.gauge_steps_frame,
+                                              text="Crop",
+                                              width=self.button_width,
+                                              bg='red',
+                                              command=self.use_crop)
+        self.step_buttons['set_perspective'] = tk.Button(self.gauge_steps_frame,
+                                                         text='Set Perspective',
+                                                         width=self.button_width,
+                                                         bg='red',
+                                                         command=self.create_perspective_frame)
+
+    def create_perspective_frame(self):
+        """
+        Create the perspective frame for gauge calibration steps
+        :return:
+        """
+        if not self.error_flags['cropped']:
+            message = 'Please crop the image before setting the perspective'
+            mb.showerror('Error', message)
+            return
+        self.calibration['perspective'] = [[0, 0], [self.w, 0], [self.w, self.h], [0, self.h]]
+        self.step_buttons['set_perspective'].config(bg='green')
+        self.error_flags['perspective'] = True
+        self.backup_cv = self.img_cv.copy()
+        self.top_frames['perspective'] = tk.Toplevel(self.window,
+                                                     name='perspective',
+                                                     width=200,
+                                                     height=200)
+        self.top_frames['perspective'].title('Set Perspective')
+        tk.Button(self.top_frames['perspective'],
+                  text='Set Points',
+                  command=self.use_set_perspective_points).pack(side=tk.TOP)
+        for bar in self.perspective_values.keys():
+            self.perspective_bar[bar] = tk.Scale(self.top_frames['perspective'],
+                                                 from_=-self.w,
+                                                 to=self.w,
+                                                 command=self.bar_change_perspective,
+                                                 orient=tk.HORIZONTAL,
+                                                 label=bar)
+            self.perspective_bar[bar].pack(side=tk.TOP)
+        tk.Button(self.top_frames['perspective'],
+                  text='Reset Perspective',
+                  command=self.reset_perspective).pack(side=tk.TOP)
+
+    def create_calibration_toolbar(self):
+        """
+        Create the generic toolbar for gauge calibration
+        :return:
+        """
+        self.calibration_toolbar = tk.Frame(self.window,
+                                            width=env.WINDOW_SIZE[0],
+                                            height=env.WINDOW_SIZE[1])
+        self.calibration_toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH)
 
     def create_canvas(self):
         """
@@ -174,41 +242,71 @@ class Calibrator:
                                 width=self.w,
                                 height=self.h,
                                 cursor="cross")
-        self.canvas_image = self.canvas.create_image(0, 0, image=self.orig_im, anchor=tk.NW)
+        self.canvas_image = self.canvas.create_image(0, 0, image=self.img_im, anchor=tk.NW)
         self.canvas.place(anchor=tk.CENTER, relx=0.5, rely=0.5)
         self.canvas.pack(anchor=tk.CENTER, padx=10, pady=10)
         self.image_frame.place(anchor=tk.CENTER, relx=0.5, rely=0.5)
         self.image_frame.pack(side=tk.TOP, anchor=tk.CENTER, padx=10, pady=10, fill=tk.BOTH, expand=True)
+        self.add_grid_to_canvas()
+
+    def add_grid_to_canvas(self):
+        """
+                Add a grid to the canvas
+                :return:
+                """
+        for line in range(0, self.w, self.grid_size):
+            self.canvas.create_line(line, 0, line, self.h, fill='#ffffff', tag='grid')
+        for line in range(0, self.h, self.grid_size):
+            self.canvas.create_line(0, line, self.w, line, fill='#ffffff', tag='grid')
 
     # Image loading methods
+    def load_image_from_file(self,
+                             image_name: str = None):
+        """
+        Load an image from a file
+        :param image_name:
+        :return:
+        """
+        if image_name is None:
+            image_name = self.calibration_image
+        self.reset_to_start(prompt=False)
+        path = Path(self.directory).joinpath(image_name).as_posix()
+        self.current_image_path = path
+        self.img_cv = cv2.imread(self.current_image_path)
+        if self.img_cv is None:
+            raise Exception("Image not found / not readable")
+        self.update_main_image(self.img_cv)
+
     def update_main_image(self,
-                          image: str = None,
+                          image,
                           keep_window: bool = False,
                           resize: bool = True):
         """
         Updates the main image of the calibrator. This will also update the canvas and the image frame,
         and the relevant size variables.
-        :param image: string - image name (without path)
+        :param image:
         :param keep_window:
         :param resize:
         :return:
         """
-        path = Path(self.directory).joinpath(image).as_posix()
-        for top in self.top_frames.values():
-            if top is not None:
-                top.destroy()
-        self.current_image_path = path
-        self.orig_cv = cv2.imread(self.current_image_path)
-        if self.orig_cv is None:
-            raise Exception("Image not found / not readable")
-        self.proc_cv = self.orig_cv.copy()
-        if resize:
-            self.proc_cv = self.resize_cv(self.proc_cv)
+        # check if image is Image
+        if isinstance(image, Image.Image):
+            image.convert('RGB')
+            self.img_cv = np.array(image)
+            self.img_im = ImageTk.PhotoImage(image)
+        elif isinstance(image, ImageTk.PhotoImage):
+            self.img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            self.img_im = image
         else:
-            self.h = self.proc_cv.shape[0]
-            self.w = self.proc_cv.shape[1]
-        self.orig_im = ie.cv_to_imagetk(self.proc_cv)
-        self.proc_im = copy(self.orig_im)
+            self.img_cv = image
+            self.img_im = ie.cv_to_imagetk(self.img_cv)
+
+        if resize:
+            self.img_cv = self.resize_cv(self.img_cv)
+            self.img_im = ie.cv_to_imagetk(self.img_cv)
+        else:
+            self.h = self.img_cv.shape[0]
+            self.w = self.img_cv.shape[1]
         self.create_canvas()
         w_w, w_h = int(self.w * 1.4), int(self.h * 1.1)
         if not keep_window:
@@ -227,7 +325,7 @@ class Calibrator:
                                                          title="Select Calibration Image",
                                                          filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
         self.calibration_image = os.path.basename(self.calibration_image_path)
-        self.update_main_image(self.calibration_image)
+        self.load_image_from_file(self.calibration_image)
 
     def resize_cv(self,
                   image: np.ndarray):
@@ -249,11 +347,24 @@ class Calibrator:
         duplicated code for different shapes drawing.
         :return: None
         """
-        self.canvas.bind("<ButtonPress-1>", self.on_start)
-        self.canvas.bind("<B1-Motion>", self.on_grow)
-        self.canvas.bind("<Double-1>", self.on_clear)
-        self.canvas.bind("<ButtonRelease-3>", self.on_move)
+        self.canvas.bind('<ButtonPress-1>', self.on_start)
         self.canvas.bind("<ButtonRelease-1>", self.on_stop)
+        self.canvas.bind("<Double-1>", self.on_clear)
+        if self.draw_params['tag'] is not 'perspective':
+            self.canvas.bind("<B1-Motion>", self.on_grow)
+            self.canvas.bind("<ButtonRelease-3>", self.on_move)
+
+    def draw_point(self, event):
+        """
+        Draws a point on the canvas.
+        :return:
+        """
+        x = event.x
+        y = event.y
+        self.canvas.create_oval(x, y, x, y,
+                                fill=self.draw_params['fill'],
+                                width=self.draw_params['width'],
+                                tag=self.draw_params['tag'])
 
     def on_start(self, event):
         """
@@ -261,11 +372,11 @@ class Calibrator:
         :param event: tkinter event
         :return: None
         """
+        self.start_x, self.start_y = event.x, event.y
         if self.draw_params['tag'] is 'crop':
             self.draw_params['width'] = 3
         else:
             self.draw_params['width'] = self.brush_size_bar.get()
-        self.start_x, self.start_y = event.x, event.y
         self.drawn = None
 
     def on_grow(self, event):
@@ -316,6 +427,11 @@ class Calibrator:
         self.end_x, self.end_y = event.x, event.y
         if self.draw_params['tag'] == 'crop':
             self.crop_image()
+        elif self.draw_params['tag'] is 'perspective':
+            self.perspective_transform_points.append((event.x, event.y))
+            self.draw_point(event)
+            if len(self.perspective_transform_points) == 4:
+                self.four_points_perspective_transform()
         self.stop_actions()
 
     def stop_actions(self):
@@ -325,6 +441,56 @@ class Calibrator:
         :return: None
         """
         pass
+
+    def use_set_perspective_points(self):
+        """
+        This function is called when the user clicks on the "Set Perspective Points" button.
+        :return: None
+        """
+        self.draw_params = dict(tag='perspective',
+                                width=20,
+                                outline='yellow',
+                                fill='yellow')
+        self.active_shape = self.canvas.create_oval
+        self.draw_shape()
+
+    def four_points_perspective_transform(self):
+        """
+        Transforms the image according to the set points
+        :return:
+        """
+        self.calibration['perspective'] = self.perspective_transform_points
+        self.img_cv = ie.four_point_transform(self.img_cv,
+                                              self.perspective_transform_points)
+        self.apply_crop(0, 0, self.img_cv.shape[1], self.img_cv.shape[0], resize=False)
+        self.canvas.delete('perspective')
+
+    def bar_change_perspective(self, event):
+        """
+        Change the perspective transform points when the user moves the slider
+        :return: None
+        """
+        self.update_main_image(self.backup_cv)
+        for bar in self.perspective_bar.keys():
+            value = self.perspective_bar[bar].get()
+            self.perspective_values[bar] = value
+        scales = [self.perspective_values[key] for key in self.perspective_values.keys()]
+        scales = point_math.get_perspective_points(self.w,
+                                                   self.h,
+                                                   scales)
+        self.calibration['perspective'] = scales
+        self.img_cv = ie.four_point_transform(self.img_cv,
+                                              scales)
+        self.apply_crop(0, 0, self.img_cv.shape[1], self.img_cv.shape[0], resize=False)
+
+    def reset_perspective(self):
+        """
+        Reset the perspective transform points
+        :return: None
+        """
+        self.update_main_image(self.backup_cv)
+        for bar in self.perspective_bar.keys():
+            self.perspective_bar[bar].set(0)
 
     def use_crop(self):
         """
@@ -345,8 +511,9 @@ class Calibrator:
         diff = max(diff_x, diff_y)
         x, y = self.start_x, self.start_y
         x_diff, y_diff = self.start_x + diff, self.start_y + diff
-        resize = False
-        self.apply_crop(x, y, x_diff, y_diff, resize)
+        self.step_buttons['crop'].config(bg='green')
+        self.calibration['crop'] = (y, y_diff, x, x_diff)
+        self.apply_crop(x, y, x_diff, y_diff, resize=False)
 
     def apply_crop(self,
                    x: int,
@@ -364,32 +531,27 @@ class Calibrator:
         :param resize: bool whether to resize the image to a square
         :return: None
         """
-        cropped_image = self.proc_cv[y:y_diff, x:x_diff]
+        cropped_image = self.img_cv[y:y_diff, x:x_diff]
         cropped_image = cv2.resize(cropped_image, env.EDIT_IMAGE_SIZE)
-        cv2.imwrite(self.train_image_path, cropped_image)
-        self.update_main_image(image=env.TRAIN_IMAGE_NAME,
+        self.img_cv = cropped_image
+        self.update_main_image(image=self.img_cv,
                                keep_window=True,
                                resize=resize)
         self.error_flags['cropped'] = True
 
-    def update_from_cv(self):
-        """
-        updates self.proc_im from self.proc_cv. For purposes of applying cv2 functions on proc_cv
-        :return:
-        """
-        self.proc_im = ie.cv_to_imagetk(self.proc_cv)
-
     def show_image(self,
-                   image: ImageTk.PhotoImage = None):
+                   image: ImageTk.PhotoImage or np.ndarray = None):
         """
         Show the image in the main image frame. If image is None, show the image in self.proc_im
         :param image:
         :return: None
         """
         if image is None:
-            self.canvas.itemconfig(self.canvas_image, image=self.proc_im, tag='canvas_image')
-        else:
-            self.canvas.itemconfig(self.canvas_image, image=image, tag='canvas_image')
+            self.canvas.itemconfig(self.canvas_image, image=self.img_im, tag='canvas_image')
+            return
+        elif isinstance(image, np.ndarray):
+            image = ie.cv_to_imagetk(image)
+        self.canvas.itemconfig(self.canvas_image, image=image, tag='canvas_image')
 
     def reset_error_flags(self,
                           except_for: list or str = None):
@@ -405,13 +567,25 @@ class Calibrator:
             if item not in except_for:
                 self.error_flags[item] = False
 
-    def reset_to_start(self):  # TODO: add all reset fields
+    def reset_to_start(self,
+                       prompt: bool = True):
+        """
+        Reset all the parameters to their default values - view original image
+        :return:
+        """
         msg = "Are you sure you want to reset the image? This will delete all edits and reset parameters."
-        if tk.messagebox.askokcancel("Reset", msg):
-            self.reset_error_flags()
-            self.update_main_image(self.calibration_image)
+        if prompt:
+            check = tk.messagebox.askokcancel("Reset", msg)
         else:
-            return
+            check = True
+        if check:
+            self.reset_error_flags()
+            for button in self.step_buttons.keys():
+                self.step_buttons[button].config(bg='red')
+            for top in self.top_frames.values():
+                if top is not None:
+                    top.destroy()
+        return
 
     def set_calibration_parameters(self):
         """
@@ -471,10 +645,21 @@ class AnalogCalibrator(Calibrator):
         self.crop_detection = {'min_r': 0,  # parameters for auto crop detection
                                'max_r': 0,
                                'min_d': 0}
-        self.cur_angle = 0
-        self.step_angle = 0
+        self.zero_angle = 0
+        self.angle_deviation = 0
         self.value_diff = 0
         self.angle_diff = 0
+        self.value_step = 0
+
+        # add error flags
+        flags = ['zero_needle_rotation',
+                 'circles',
+                 'needle_found',
+                 'min_found',
+                 'max_found',
+                 'reading_tested']
+        for flag in flags:
+            self.error_flags[flag] = False
 
         # Crop Control Tools - GUI
         self.crop_mode = tk.StringVar(self.window)
@@ -485,16 +670,13 @@ class AnalogCalibrator(Calibrator):
                             'max_value': 0,
                             'units': ''}
 
-        # Needle rotation Frame
-        self.needle_rotation_frame = None
-
         # Circle Detection and gauge text parameters Frame
         self.circle_frame = None
         self.circle_detection_scales = {key: None for key in ['min_r', 'max_r', 'min_d']}
 
         # Needle rotation frame
-        self.needle_rotation_frame = None
         self.needle_rotation_scale = None
+        self.add_calibration_toolbar_frame()
 
         # Add gauge steps
         self.add_toolbar_buttons()
@@ -502,7 +684,7 @@ class AnalogCalibrator(Calibrator):
 
         # Open Image and run
         if self.calibration_image is not None:
-            self.update_main_image(image=calibration_image)
+            self.load_image_from_file(image_name=calibration_image)
 
     # Specific Frames and Widgets for Analog Calibration
     def add_toolbar_buttons(self):
@@ -512,11 +694,9 @@ class AnalogCalibrator(Calibrator):
         """
         crop_options = ['Auto Crop', 'Manual Crop']
         self.crop_mode.set(crop_options[0])
-        self.crop_button.config(command=self.set_crop_mode)
         self.buttons['crop_options'] = tk.OptionMenu(self.toolbar_frame,
                                                      self.crop_mode,
                                                      *crop_options)
-        self.crop_button.pack(side=tk.LEFT)
         self.buttons['crop_options'].pack(side=tk.LEFT)
 
     def add_gauge_steps_frame(self):
@@ -524,41 +704,89 @@ class AnalogCalibrator(Calibrator):
         Add the gauge steps frame to the calibrator
         :return:
         """
-
-        button_width = 18
-        self.buttons['circle_detection'] = tk.Button(self.gauge_steps_frame,
-                                                     text='Circle Detection',
-                                                     width=button_width,
-                                                     command=self.create_circle_detection_frame)
-        self.buttons['find_needle'] = tk.Button(self.gauge_steps_frame,
-                                                text='Find Needle',
-                                                width=button_width,
-                                                command=self.create_find_needle_frame)
+        self.button_width = 18
+        self.step_buttons['crop'].config(command=self.set_crop_mode)
+        self.step_buttons['circle_detection'] = tk.Button(self.gauge_steps_frame,
+                                                          text='Circle Detection',
+                                                          width=self.button_width,
+                                                          bg='red',
+                                                          command=self.create_circle_detection_frame)
+        self.step_buttons['needle_detection'] = tk.Button(self.gauge_steps_frame,
+                                                          text='Needle Detection',
+                                                          width=self.button_width,
+                                                          bg='red',
+                                                          command=self.create_find_needle_frame)
+        self.step_buttons['set_zero'] = tk.Button(self.gauge_steps_frame,
+                                                  text='Set Zero Angle',
+                                                  width=self.button_width,
+                                                  bg='red',
+                                                  command=self.set_zero_needle_rotation)
+        self.step_buttons['set_min'] = tk.Button(self.gauge_steps_frame,
+                                                 text='Set Min Angle',
+                                                 width=self.button_width,
+                                                 bg='red',
+                                                 command=self.set_min_needle_rotation,
+                                                 name='set')
+        self.step_buttons['set_max'] = tk.Button(self.gauge_steps_frame,
+                                                 text='Set Max Angle',
+                                                 width=self.button_width,
+                                                 bg='red',
+                                                 command=self.set_max_needle_rotation,
+                                                 name='max')
+        self.step_buttons['test_reading'] = tk.Button(self.gauge_steps_frame,
+                                                      text='Test Reading',
+                                                      width=self.button_width,
+                                                      bg='red',
+                                                      command=self.test_reading)
         self.buttons['show_masked'] = tk.Button(self.gauge_steps_frame,
                                                 text='Show Masked Needle',
-                                                width=button_width,
+                                                width=self.button_width,
                                                 command=self.show_masked_needle)
+        self.buttons['re_config'] = tk.Button(self.gauge_steps_frame,
+                                              text='Re-Config Reading',
+                                              width=self.button_width,
+                                              command=self.re_config_reading)
 
-        self.buttons['circle_detection'].pack(side=tk.TOP)
-        self.buttons['find_needle'].pack(side=tk.TOP)
-        self.buttons['show_masked'].pack(side=tk.TOP)
+        for button in self.step_buttons.values():
+            button.pack(side=tk.TOP)
+        for button in ['show_masked', 're_config']:
+            self.buttons[button].pack(side=tk.BOTTOM)
+
+    def add_calibration_toolbar_frame(self):
+        """
+        Create the needle rotation frame - specific gauge calibration toolbar
+        :return:
+        """
+        reading_text = f'Value: {self.current_reading}'
+        self.needle_rotation_scale = tk.Scale(self.calibration_toolbar,
+                                              from_=360,
+                                              to=-360,
+                                              orient=tk.HORIZONTAL,
+                                              label='Rotate Needle',
+                                              resolution=0.0001,
+                                              command=self.rotate_needle,
+                                              length=360,
+                                              state=tk.DISABLED,
+                                              width=25)
+        self.buttons['current_value'] = tk.Button(self.calibration_toolbar,
+                                                  text=reading_text)
+        self.needle_rotation_scale.pack(side=tk.RIGHT)
+        self.buttons['current_value'].pack(side=tk.TOP)
 
     def create_find_needle_frame(self):
         """
         Creates the frame for the needle finding and calibration the gauge text parameters
         :return:
-        """
-        if self.find_needle_frame is None:
-            self.find_needle_frame = tk.Toplevel(master=self.window,
-                                                 width=200,
-                                                 height=300)
-        else:
-            tk.messagebox.showinfo('Error', 'Find Needle Frame already exists')
+        """  # TODO: check how to not allow 2 frames to be created at the same time
+        if self.flag_error_check('perspective'):
             return
+        self.find_needle_frame = tk.Toplevel(master=self.window,
+                                             width=200,
+                                             height=300)
         dense = tk.TOP
-        self.buttons['find_needle'] = tk.Button(self.find_needle_frame, text='Find Needle',
-                                                command=self.use_mark_needle)
-        self.buttons['find_needle'].pack(side=dense)
+        self.step_buttons['find_needle'] = tk.Button(self.find_needle_frame, text='Find Needle',
+                                                     command=self.use_mark_needle)
+        self.step_buttons['find_needle'].pack(side=dense)
         for key in self.text_params:
             self.text_params[key] = tk.Entry(self.find_needle_frame,
                                              width=10,
@@ -586,7 +814,7 @@ class AnalogCalibrator(Calibrator):
         for key in self.circle_detection_scales.keys():
             self.circle_detection_scales[key] = tk.Scale(self.circle_frame,
                                                          from_=1,
-                                                         to=self.proc_cv.shape[0],
+                                                         to=self.img_cv.shape[0],
                                                          orient=tk.VERTICAL,
                                                          label=key,
                                                          command=self.man_find_circles)
@@ -616,7 +844,7 @@ class AnalogCalibrator(Calibrator):
         Use the mark needle button to mark the needle
         :return: None
         """
-        self.buttons['find_needle'].config(relief=tk.SUNKEN)
+        self.step_buttons['find_needle'].config(relief=tk.SUNKEN)
         self.draw_params = dict(tag='needle', fill='white')
         self.active_shape = self.canvas.create_line
         self.draw_shape()
@@ -638,55 +866,43 @@ class AnalogCalibrator(Calibrator):
         :return:
         """
         self.reset_crop_detection()
-        self.auto_find_circles(param_source='auto')
+        self.auto_find_circles(auto_crop=True)
         r_param = 1.5  # arbitrary value that by trial and error seems to work
         square_side = int(self.r * 2.2)
         x_origin, y_origin = point_math.point_pos(self.x, self.y, self.r * r_param, 225)
         x, y = x_origin, y_origin
         x_diff, y_diff = x_origin + square_side, y_origin + square_side
         self.apply_crop(x, y, x_diff, y_diff)
-        self.reset_crop_detection(min_r=2,
-                                  max_r=2,
-                                  min_d=2)
-        self.auto_find_circles(param_source='auto')
-        self.reset_crop_detection()
+        self.step_buttons['crop'].config(bg='green')
 
     def reset_crop_detection(self,
-                             reset_all: bool = False,
                              min_r: int = 3,
                              max_r: int = 2,
-                             min_d: int = 4):
+                             min_d: int = 3):
         """
         Reset the crop detection parameters
-        :param reset_all:
         :param min_r: minimum radius
         :param max_r: maximum radius
         :param min_d: minimum distance
         :return: None
         """
-        if not reset_all:
-            self.crop_detection['min_r'] = self.w // min_r
-            self.crop_detection['max_r'] = self.w // max_r
-            self.crop_detection['min_d'] = self.w // min_d
-        if reset_all:
-            self.crop_detection['min_r'] = 1
-            self.crop_detection['max_r'] = self.w // 3
-            self.crop_detection['min_d'] = 1
+        self.crop_detection['min_r'] = self.w // min_r
+        self.crop_detection['max_r'] = self.w // 3
+        self.crop_detection['min_d'] = self.w // min_d
 
     # Circle Detection Methods
     def man_find_circles(self,
                          tweak: bool = True,
-                         param_source: str = 'man'):
+                         auto_crop: bool = False):
         """
         Manually detect circles with the current parameters
+        :param auto_crop:
         :param tweak:
-        :param param_source:
         :return:
         """
         tk.Canvas.create_circle = ie.create_circle
         for tag in ['center', 'gauge', 'no_circles']:
             self.canvas.delete(tag)
-        auto_crop = True if param_source == 'auto' else False
         if auto_crop:
             min_r = self.crop_detection['min_r']
             max_r = self.crop_detection['max_r']
@@ -696,7 +912,7 @@ class AnalogCalibrator(Calibrator):
             max_r = self.circle_detection_scales['max_r'].get()
             min_d = self.circle_detection_scales['min_d'].get()
 
-        circles = cd.find_circles(self.proc_cv,
+        circles = cd.find_circles(self.img_cv,
                                   min_r,
                                   max_r,
                                   min_d)
@@ -706,26 +922,28 @@ class AnalogCalibrator(Calibrator):
                                     font=('Arial', 20),
                                     fill='red',
                                     tag='no_circles')
+            self.step_buttons['circle_detection'].config(bg='red')
             if tweak:
-                self.tweak_circle_params(min_r, max_r, min_d, auto_crop)
+                self.tweak_circle_params(min_r, max_r, auto_crop)
             return False
         else:
             x, y, r = circles
             self.x, self.y, self.r = x, y, r
             self.error_flags['circles'] = True
-            self.tweak_circle_params(min_r, max_r, min_d, auto_crop)
+            self.tweak_circle_params(min_r, max_r, auto_crop)
             self.canvas.create_circle(x, y, r, tag='gauge', width=3, outline='green')
             self.canvas.create_circle(x, y, 5, fill='red', tag='center')
-            self.update_from_cv()
+            self.img_im = ie.cv_to_imagetk(self.img_cv)
             self.show_image()
+            if not auto_crop:
+                self.step_buttons['circle_detection'].config(bg='green')
             return x, y, r
 
     def tweak_circle_params(self,
                             min_r,
                             max_r,
-                            min_d,  # TODO implement or remove
                             auto_crop: bool = False):
-        if min_r < self.proc_cv.shape[0] / 2:
+        if min_r < self.img_cv.shape[0] / 2:
             if auto_crop:
                 self.crop_detection['min_r'] = min_r + 1
             else:
@@ -734,14 +952,15 @@ class AnalogCalibrator(Calibrator):
         if max_r > 1:
             if auto_crop:
                 self.crop_detection['max_r'] = max_r - 1
+            else:
                 if self.circle_detection_scales['max_r'] is not None:
                     self.circle_detection_scales['max_r'].set(min_r + 1)
 
     def auto_find_circles(self,
-                          param_source: str = 'man'):
+                          auto_crop: bool = False):
         """
         Apply circle detection Automatically
-        :param param_source: string: 'man' or 'auto'
+        :param auto_crop:
         :return: None
         """
         circles = False
@@ -750,8 +969,8 @@ class AnalogCalibrator(Calibrator):
         while not circles:
             if time.time() > timeout:
                 break
-            circles = self.man_find_circles(tweak=True,
-                                            param_source=param_source)
+            circles = self.man_find_circles(auto_crop=auto_crop,
+                                            tweak=True)
         if circles:
             self.x, self.y, self.r = circles
 
@@ -760,12 +979,16 @@ class AnalogCalibrator(Calibrator):
         Set the text parameters, gathered in circle detection frame.
         :return:  None
         """
+        if self.flag_error_check('needle_found'):
+            return
         for key in self.text_params.keys():
             try:
                 if key is not 'units':
                     self.calibration[key] = float(self.text_params[key].get())
-                else:
-                    self.calibration[key] = self.text_params[key].get()
+                else:  # units
+                    units = self.text_params[key].get()
+                    units = units[0].upper() + units[1:].lower()
+                    self.calibration[key] = units
             except ValueError:
                 message = "Please set the parameters first."
                 mb.showerror('Error', message)
@@ -773,8 +996,9 @@ class AnalogCalibrator(Calibrator):
         self.error_flags['parameters_set'] = True
         self.canvas.unbind('<Button-1>')
         self.canvas.unbind('<Button-3>')
-        self.buttons['find_needle'].config(relief=tk.RAISED)
-        self.create_needle_rotation_frame()
+        self.step_buttons['find_needle'].config(relief=tk.RAISED)
+        self.step_buttons['needle_detection'].config(bg='green')
+        self.needle_rotation_scale.config(state=tk.NORMAL)
         self.find_needle_frame.destroy()
 
     def mask_needle(self):
@@ -783,15 +1007,15 @@ class AnalogCalibrator(Calibrator):
         are saved in the gauge's directory in a 'jpeg' format.
         :return: None
         """
-        self.mask = np.zeros(self.proc_cv.shape[:2], dtype=np.uint8)
+        self.mask = np.zeros(self.img_cv.shape[:2], dtype=np.uint8)
         cv2.line(self.mask,
                  self.calibration['needle']['point1'],
                  self.calibration['needle']['point2'],
                  (255, 0, 0),
                  thickness=self.calibration['needle']['width'])
-        self.needle_image = cv2.bitwise_and(self.proc_cv, self.proc_cv, mask=self.mask)
+        self.needle_image = cv2.bitwise_and(self.img_cv, self.img_cv, mask=self.mask)
         cv2.imwrite(self.needle_image_path, self.needle_image)
-        self.train_image = cv2.inpaint(self.proc_cv, self.mask, 3, cv2.INPAINT_TELEA)
+        self.train_image = cv2.inpaint(self.img_cv, self.mask, 3, cv2.INPAINT_TELEA)
         cv2.imwrite(self.train_image_path, self.train_image)
 
     def show_masked_needle(self):
@@ -806,151 +1030,126 @@ class AnalogCalibrator(Calibrator):
         ie.cv_to_image(self.needle_image, show=True)
         ie.cv_to_image(self.train_image, show=True)
 
-    def create_needle_rotation_frame(self):
-        """
-        Create the needle rotation frame.
-        :return:
-        """
-        reading_text = f'Value: {self.current_reading}'
-        self.needle_rotation_frame = tk.Frame(self.window,
-                                              width=env.WINDOW_SIZE[0],
-                                              height=env.WINDOW_SIZE[1])
-        self.needle_rotation_frame.pack(side=tk.BOTTOM, fill=tk.BOTH)
-        self.needle_rotation_scale = tk.Scale(self.needle_rotation_frame,
-                                              from_=-360,
-                                              to=360,
-                                              orient=tk.HORIZONTAL,
-                                              label='Rotate Needle',
-                                              resolution=0.0001,
-                                              command=self.rotate_needle,
-                                              length=self.w / 2)
-        self.buttons['current_value'] = tk.Button(self.needle_rotation_frame,
-                                                  text=reading_text)
-        self.buttons['set_max'] = tk.Button(self.needle_rotation_frame,
-                                            text='Set Max',
-                                            command=self.set_max_needle_rotation,
-                                            name='max')
-        self.buttons['set_min'] = tk.Button(self.needle_rotation_frame,
-                                            text='Set Min',
-                                            command=self.set_min_needle_rotation,
-                                            name='set')
-        self.buttons['re_config'] = tk.Button(self.needle_rotation_frame,
-                                              text='ReConfig',
-                                              command=self.reconfig_needle,
-                                              name='re_config')
-        self.needle_rotation_scale.pack(side=tk.RIGHT)
-        self.buttons['current_value'].pack(side=tk.LEFT)
-        self.buttons['set_max'].pack(side=tk.LEFT)
-        self.buttons['set_min'].pack(side=tk.LEFT)
-        self.buttons['re_config'].pack(side=tk.LEFT)
-
     def rotate_needle(self,
-                      event,
+                      event=None,
                       angle=None):
         """
         Rotate the needle image and show it in the canvas.
-        :param event: tkinter event (not used)
+        :param event: tkinter event (not used, but required)
         :param angle: angle relative to the needle's center
         :return: None
         """
-        if not self.error_flags['needle_found']:
-            message = "Please find the needle first and set gauge text parameters."
-            mb.showerror('Error', message)
-            return
         self.canvas.itemconfig('needle', state=tk.HIDDEN)
         if angle is None:
             angle = self.needle_rotation_scale.get()
+        angle += self.angle_deviation
         rotated = ie.rotate_needle(train_image=self.train_image,
                                    needle_image=self.needle_image,
                                    needle_center=(self.x, self.y),
                                    needle_angle=angle)
         self.rotated_im = ie.cv_to_imagetk(rotated)
-        # if self.error_flags['parameters_set'] and self.error_flags['needle_found']:
-        #     self.update_reading()
         self.show_image(self.rotated_im)
+        if self.error_flags['reading_tested']:
+            self.update_reading_button()
 
-    def set_max_needle_rotation(self):
+    def set_zero_needle_rotation(self):
         """
-        Set the max angle for needle rotation.
-        :return: None
+        Set the needle rotation angle to zero.
+        :return:
         """
         if self.flag_error_check('needle_found'):
             return
-        elif self.flag_error_check('min_angle_set'):
-            return
-        else:
-            self.calibration['needle']['max_angle'] = self.needle_rotation_scale.get()
-            self.calibration['needle']['max_cur_angle_diff'] = 360 - self.calibration['needle']['min_angle']
-            self.needle_rotation_scale.config(from_=self.calibration['needle']['max_angle'])
-            self.test_reading()
+        self.error_flags['zero_needle_rotation'] = True
+        self.angle_deviation = self.needle_rotation_scale.get()
+        self.calibration['needle']['angle_deviation'] = self.angle_deviation
+        self.step_buttons['set_zero'].config(bg='green')
 
     def set_min_needle_rotation(self):
         """
         Set the min angle for needle rotation.
         :return: None
         """
-        if self.flag_error_check('needle_found'):
+        if self.flag_error_check('zero_needle_rotation'):
             return
-        self.error_flags['min_angle_set'] = True
+        self.error_flags['min_found'] = True
         self.calibration['needle']['min_angle'] = self.needle_rotation_scale.get()
-        self.needle_rotation_scale.config(to=self.calibration['needle']['min_angle'])
+        self.step_buttons['set_min'].config(bg='green')
 
-    def reconfig_needle(self):
+    def set_max_needle_rotation(self):
         """
-        Reconfigure the needle image.
-        :return:
-        """
-        if self.flag_error_check('needle_found'):
-            return
-        self.canvas.itemconfig('needle', state=tk.NORMAL)
-        self.needle_rotation_scale.config(from_=-360, to=360)
-        self.error_flags['min_angle_set'] = False
-        self.show_image(self.proc_im)
-
-    def test_reading(self):  # TODO scale values are wrong, fix angle abs diff
-        """
-        Use the parameters and needle location to get the reading.
+        Set the max angle for needle rotation.
         :return: None
         """
-        self.angle_diff = abs(self.calibration['needle']['min_angle'] - self.calibration['needle']['max_angle'])
-        self.value_diff = self.calibration['max_value'] - self.calibration['min_value']
+        if self.flag_error_check('zero_needle_rotation'):
+            return
+        self.error_flags['max_found'] = True
+        self.calibration['needle']['max_angle'] = self.needle_rotation_scale.get()
+        self.step_buttons['set_max'].config(bg='green')
 
-        # All the bellow angles are relative to calibration image needle location
-        max_angle = self.calibration['needle']['max_angle']
+    def test_reading(self):
+        """
+        Use the parameters and needle location to get the reading.
+        The following angles are from now on relative to the true center and not the calibration image's
+        current value
+        :return: None
+        """
+        if self.flag_error_check('needle_found'):
+            return
+        if self.flag_error_check('min_found'):
+            return
+        if self.flag_error_check('max_found'):
+            return
+        if self.flag_error_check('zero_needle_rotation'):
+            return
+        self.error_flags['reading_tested'] = True
+        min_angle, max_angle = self.calibration['needle']['min_angle'], self.calibration['needle']['max_angle']
+        self.angle_diff = abs(max_angle) + abs(min_angle)
+        self.value_diff = abs(self.calibration['max_value']) + abs(self.calibration['min_value'])
+        self.needle_rotation_scale.set(0)
+        self.needle_rotation_scale.config(from_=min_angle, to=max_angle)
+        self.value_step = self.value_diff / self.angle_diff
+        self.step_buttons['test_reading'].config(bg='green')
+
+    def re_config_reading(self):
+        """
+        In case that min/max was already set and the "Test Reading" button was pressed, in order to re-configure the
+        limits this function is called
+        :return: None
+        """
+        if self.flag_error_check('reading_tested'):
+            return
+        self.angle_deviation = 0
+        self.needle_rotation_scale.set(0)
+        self.error_flags['reading_tested'] = False
+        self.needle_rotation_scale.config(from_=360, to=-360)
+        for button in ['set_min', 'set_max', 'set_zero']:
+            self.step_buttons[button].config(bg='red')
+        for flag in ['min_found', 'max_found', 'zero_needle_rotation']:
+            self.error_flags[flag] = False
+
+    def get_current_reading(self):
+        """
+        Get the current reading from the needle rotation scale.
+        :return: None
+        """
+        angle = self.needle_rotation_scale.get()
         min_angle = self.calibration['needle']['min_angle']
-        center_angle = (abs(max_angle) + abs(min_angle)) / 2
-        # Angles calculation to transform to absolute angle - relative to 0 at 90 degrees to needle center
+        if angle > 0:
+            min_rel_angle = min_angle - angle
+        else:
+            min_rel_angle = min_angle + abs(angle)
+        value = min_rel_angle * self.value_step
+        self.current_reading = self.calibration['min_value'] + value
 
-        # TODO: add cases for needle rotation (after center, before center, etc.)
-        beta = abs(min_angle)
-        theta = abs(center_angle) - abs(beta)
-        alpha = beta - theta
-        min_angle = theta - alpha
-
-        # Rotate needle to be aligned with the absolute center
-        self.centered_needle_image = ie.rotate_image(self.needle_image,
-                                                     angle=alpha,
-                                                     pivot=(self.x, self.y))
-        cv2.imwrite('centered_needle.jpg', self.centered_needle_image)
-
-        self.needle_rotation_scale.config(from_=max_angle, to=min_angle)
-
-        self.calibration['value_diff'] = self.value_diff
-        self.calibration['angle_diff'] = self.angle_diff
-        self.calibration['max_angle'] = max_angle
-        self.calibration['min_angle'] = min_angle
-
-    def update_reading(self):
+    def update_reading_button(self):
         """
         Update the reading label with the current reading.
         :return: None
         """
-        value = abs(self.needle_rotation_scale.get() * self.value_diff / self.angle_diff)
-        self.current_reading = self.calibration['min_value'] + value
-        self.buttons['read_value'].config(text='Current Reading: \n '
-                                               '{:.2f} {}'.format(self.current_reading,
-                                                                  self.calibration['units']))
-        self.buttons['read_value'].grid(row=13, column=0)
+        self.get_current_reading()
+        text = 'Value: {:.2f} {}'.format(self.current_reading, self.calibration['units'])
+        self.buttons['current_value'].config(text=text)
+        self.buttons['current_value'].pack(side=tk.LEFT)
 
     def set_calibration_parameters(self):
         """
@@ -968,13 +1167,21 @@ class AnalogCalibrator(Calibrator):
         Check if flag value is True, else prompt warning and return False.
         :return: True if error, False if no error
         """
-        if flag_name == 'needle_found':
+        if flag_name == 'cropped':
+            message = 'Please crop the image first.'
+        elif flag_name == 'perspective':
+            message = 'Please set the perspective first.'
+        elif flag_name == 'needle_found':
             message = "Please find the needle first and set gauge text parameters."
-        elif flag_name == 'min_angle_set':
+        elif flag_name == 'min_found':
             message = "Please set the minimum needle rotation angle."
+        elif flag_name == 'zero_needle_rotation':
+            message = "Please set the zero needle rotation angle."
+        elif flag_name == 'reading_tested':
+            message = "Please test the reading first."
         else:
             message = "Some error occurred."
-        if self.error_flags[flag_name]:
+        if not self.error_flags[flag_name]:
             final_message = message
             mb.showerror('Error', final_message)
             return True

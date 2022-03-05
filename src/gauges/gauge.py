@@ -54,6 +54,7 @@ class Gauge:
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
             typer.echo(f'Created directory {self.directory}')
+            os.mkdir(os.path.join(self.directory, 'read_frames'))
 
     def calibrate_from_xml(self):
         """
@@ -83,6 +84,10 @@ class Gauge:
                'calibration_image': self.calibration_image,
                'calibration_file': self.xml_file}
         return dic
+
+    def get_reading(self,
+                    frame):
+        pass
 
 
 class AnalogGauge(Gauge):
@@ -122,7 +127,8 @@ class AnalogGauge(Gauge):
         self.calibrator_app = calibrator.AnalogCalibrator(calibration_image=calibration_image,
                                                           index=index,
                                                           camera_id=camera_id)
-        self.calibrator_app.run()
+        if calibration_file is None:
+            self.calibrator_app.run()
 
     def create_train_test_set(self,
                               train_size: float = 0.8,
@@ -146,8 +152,8 @@ class AnalogGauge(Gauge):
         self.needle_image = cv2.imread(self.needle_image_path)
         if self.needle_image is None:
             raise FileNotFoundError(f'Needle image "{self.needle_image}" not found')
-        min_angle = float(self.calibration['min_angle'])
-        max_angle = float(self.calibration['max_angle'])
+        min_angle = float(self.calibration['needle']['min_angle'])
+        max_angle = float(self.calibration['needle']['max_angle'])
         center = self.calibration['center']
         # convert values in tuple to floats
         center = tuple([float(x) for x in center])
@@ -218,3 +224,23 @@ class AnalogGauge(Gauge):
                        device=device,
                        plot=plot)
         return None
+
+    def get_reading(self,
+                    model,
+                    timestamp: str = None,
+                    frame: np.array = None):
+        if not self.calibrated:
+            raise ValueError('Gauge not calibrated')
+        if not self.trained:
+            raise ValueError('Gauge not trained')
+        crop_coords = self.calibration['crop']
+        perspective_pts = self.calibration['perspective']
+        frame = ie.frame_to_read_image(frame,
+                                       crop_coords=crop_coords,
+                                       perspective_pts=perspective_pts)
+        # save image to history folder
+        image_name = f'gauge_{self.index}_{timestamp}' + '.jpg'
+        cv2.imwrite(f"{self.directory}/read_frames/{image_name}", frame)
+        # get reading
+        reading = model.get_reading(frame)
+        return reading

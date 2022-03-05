@@ -4,7 +4,7 @@ import cv2
 
 
 def dist_2_pts(x1, y1, x2, y2):
-    return np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
 def mid_pts(tup1, tup2):
@@ -36,8 +36,8 @@ def avg_circles(circles: np.array,
 
 
 def point_pos(x0, y0, d, theta):
-    theta_rad = math.pi/2 - math.radians(theta)
-    return int(x0 + d*math.cos(theta_rad)), int(y0 + d*math.sin(theta_rad))
+    theta_rad = math.pi / 2 - math.radians(theta)
+    return int(x0 + d * math.cos(theta_rad)), int(y0 + d * math.sin(theta_rad))
 
 
 def angle_from_pts(x1, y1, x2, y2):
@@ -85,3 +85,66 @@ def define_min_max_values_from_anel(step,
     step_angle = 360 / step
     angle_to_max = (max_val - min_val) * step_angle
     return angle_to_max, step_angle
+
+
+def angle_calculate(min_angle: float,
+                    max_angle: float,
+                    angle_deviation: float):
+    """
+    Calculate the angle to be used in the angle_deviation
+    :param min_angle:
+    :param max_angle:
+    :param angle_deviation:
+    :return:
+    """
+    if angle_deviation > 0:
+        """
+        This means that the needle in calibration image is "after" the zero angle
+        """
+        min_angle = min_angle - angle_deviation
+        max_angle = max_angle - angle_deviation
+    else:
+        """
+        This means that the needle in calibration image is "before" the zero angle
+        """
+        min_angle = min_angle - angle_deviation
+        max_angle = max_angle + angle_deviation
+    return min_angle, max_angle
+
+
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+    pts = np.array(pts)
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    return rect.tolist()
+
+
+def get_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+    pts = np.array(pts)
+    for i in range(4):
+        rect[i] = pts[i]
+    return rect
+
+
+def get_perspective_points(w,
+                           h,
+                           scales):
+    """
+    Get the points that are used for perspective transform from scale values
+    :param scales:
+    :return:
+    """
+    top, bottom, left, right = scales
+    dest = [[0 + top, 0 + left],
+            [w + top, + right],
+            [w + bottom, h + right],
+            [0 + bottom, h + left]]
+    return dest
+
+
