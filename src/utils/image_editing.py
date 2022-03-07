@@ -36,17 +36,14 @@ def rotate_image(img, angle, pivot):
 def rotate_needle(train_image: np.ndarray,
                   needle_image: np.ndarray,
                   needle_center: tuple,
-                  needle_angle: float,
-                  return_needle: bool = False):
+                  needle_angle: float):
     rotated_needle = rotate_image(needle_image, needle_angle, needle_center)
     mask = cv2.cvtColor(rotated_needle, cv2.COLOR_BGR2GRAY)
     mask = cv2.threshold(mask, 10, 255, cv2.THRESH_BINARY)[1]
     mask_inv = cv2.bitwise_not(mask)
     bg_img = cv2.bitwise_and(train_image, train_image, mask=mask_inv)
     blended = cv2.add(bg_img, rotated_needle)
-    if return_needle:
-        return rotated_needle
-    return blended
+    return blended, rotated_needle
 
 
 def create_circle(obj,

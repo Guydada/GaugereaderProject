@@ -26,7 +26,6 @@ class Gauge:
                  camera_id: str,
                  index: str,
                  description: str,
-                 ui_calibration: bool = True,
                  calibration_image: str = None,
                  calibration_file: str = None):
 
@@ -47,8 +46,6 @@ class Gauge:
         self.calibrator_app = None
         if calibration_file is not None:
             self.calibrate_from_xml()
-        elif calibration_file is None and not ui_calibration:
-            raise ValueError('No calibration data given and no UI calibration requested')
 
     def _init_directory(self):  # TODO: add overwrite/skip option
         if not os.path.exists(self.directory):
@@ -96,14 +93,12 @@ class AnalogGauge(Gauge):
                  camera_id: str,
                  index: str,
                  description: str,
-                 ui_calibration: bool = True,
                  calibration_image: str = None,
                  calibration_file: str = None):
         super().__init__(timestamp=timestamp,
                          camera_id=camera_id,
                          index=index,
                          description=description,
-                         ui_calibration=ui_calibration,
                          calibration_image=calibration_image,
                          calibration_file=calibration_file)
         self.train_image_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
@@ -124,11 +119,12 @@ class AnalogGauge(Gauge):
         self.train_data_loader = None
         self.test_data_loader = None
 
-        self.calibrator_app = calibrator.AnalogCalibrator(calibration_image=calibration_image,
-                                                          index=index,
-                                                          camera_id=camera_id)
         if calibration_file is None:
+            self.calibrator_app = calibrator.AnalogCalibrator(calibration_image=calibration_image,
+                                                              index=index,
+                                                              camera_id=camera_id)
             self.calibrator_app.run()
+            self.calibrated = True
 
     def create_train_test_set(self,
                               train_size: float = 0.8,
@@ -182,7 +178,7 @@ class AnalogGauge(Gauge):
         for angle in angle_list:
             index += 1
             image_name = f'{index:05d}' + '.jpg'
-            image = ie.rotate_needle(self.train_image, self.needle_image, center, angle)
+            image, _ = ie.rotate_needle(self.train_image, self.needle_image, center, angle)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image_pil = Image.fromarray(image)
             image_pil.save(f"{self.directory}/{set_type}/{image_name}")

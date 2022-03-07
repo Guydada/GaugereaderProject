@@ -92,3 +92,8 @@ webencodings==0.5.1
 widgetsnbextension @ file:///tmp/build/80754af9/widgetsnbextension_1645009354203/work
 xmltodict @ file:///Users/ktietz/demo/mc3/conda-bld/xmltodict_1629301980723/work
 zipp @ file:///opt/conda/conda-bld/zipp_1641824620731/work
+
+Pillow~=9.0.1
+typer~=0.4.0
+xmltodict~=0.12.0
+matplotlib~=3.5.1

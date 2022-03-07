@@ -21,6 +21,9 @@ import src.utils.circle_dectection as cd
 import src.utils.envconfig as env
 import src.utils.convert_xml as xmlr
 
+if os.environ.get('DISPLAY','') == '':
+    print('no display found. Using :0.0')
+    os.environ.__setitem__('DISPLAY', ':0.0')
 
 class Calibrator:
     def __init__(self,
@@ -324,6 +327,8 @@ class Calibrator:
         self.calibration_image_path = fd.askopenfilename(initialdir=env.CALIBRATION_PATH,
                                                          title="Select Calibration Image",
                                                          filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
+        # get directory
+        self.directory = Path(self.calibration_image_path).parent.as_posix()
         self.calibration_image = os.path.basename(self.calibration_image_path)
         self.load_image_from_file(self.calibration_image)
 
@@ -365,6 +370,7 @@ class Calibrator:
                                 fill=self.draw_params['fill'],
                                 width=self.draw_params['width'],
                                 tag=self.draw_params['tag'])
+
 
     def on_start(self, event):
         """
@@ -429,9 +435,18 @@ class Calibrator:
             self.crop_image()
         elif self.draw_params['tag'] is 'perspective':
             self.perspective_transform_points.append((event.x, event.y))
-            self.draw_point(event)
-            if len(self.perspective_transform_points) == 4:
-                self.four_points_perspective_transform()
+            if len(self.perspective_transform_points) <= 4:
+                self.canvas.delete('perspective_polygon')
+                self.canvas.create_polygon(self.perspective_transform_points,
+                                           fill='',
+                                           outline='red',
+                                           width=2,
+                                           tag='perspective_polygon')
+                self.draw_point(event)
+            elif len(self.perspective_transform_points) == 5:
+                self.four_points_perspective_transform(mode='points')
+                self.perspective_transform_points = []
+
         self.stop_actions()
 
     def stop_actions(self):
@@ -454,7 +469,8 @@ class Calibrator:
         self.active_shape = self.canvas.create_oval
         self.draw_shape()
 
-    def four_points_perspective_transform(self):
+    def four_points_perspective_transform(self,
+                                          mode: str = 'bars'):
         """
         Transforms the image according to the set points
         :return:
@@ -462,6 +478,8 @@ class Calibrator:
         self.calibration['perspective'] = self.perspective_transform_points
         self.img_cv = ie.four_point_transform(self.img_cv,
                                               self.perspective_transform_points)
+        if mode is not 'bars':
+            self.perspective_im = self.img_cv.copy()
         self.apply_crop(0, 0, self.img_cv.shape[1], self.img_cv.shape[0], resize=False)
         self.canvas.delete('perspective')
 
@@ -470,7 +488,10 @@ class Calibrator:
         Change the perspective transform points when the user moves the slider
         :return: None
         """
-        self.update_main_image(self.backup_cv)
+        if self.perspective_im is not None:
+            self.update_main_image(self.perspective_im)
+        else:
+            self.update_main_image(self.backup_cv)
         for bar in self.perspective_bar.keys():
             value = self.perspective_bar[bar].get()
             self.perspective_values[bar] = value
@@ -489,6 +510,7 @@ class Calibrator:
         :return: None
         """
         self.update_main_image(self.backup_cv)
+        self.perspective_im = None
         for bar in self.perspective_bar.keys():
             self.perspective_bar[bar].set(0)
 
@@ -599,9 +621,7 @@ class Calibrator:
         Save to XML the calibration data
         :return:
         """
-        self.set_calibration_parameters()
-        xmlr.dict_to_xml(self.calibration, self.xml_file, gauge=True)
-        typer.secho('Saved parameters to {}'.format(self.xml_file), fg='green')
+        pass
 
     def run(self):
         """
@@ -1014,9 +1034,7 @@ class AnalogCalibrator(Calibrator):
                  (255, 0, 0),
                  thickness=self.calibration['needle']['width'])
         self.needle_image = cv2.bitwise_and(self.img_cv, self.img_cv, mask=self.mask)
-        cv2.imwrite(self.needle_image_path, self.needle_image)
         self.train_image = cv2.inpaint(self.img_cv, self.mask, 3, cv2.INPAINT_TELEA)
-        cv2.imwrite(self.train_image_path, self.train_image)
 
     def show_masked_needle(self):
         """
@@ -1032,25 +1050,30 @@ class AnalogCalibrator(Calibrator):
 
     def rotate_needle(self,
                       event=None,
+                      show: bool = True,
                       angle=None):
         """
         Rotate the needle image and show it in the canvas.
+        :param show:
         :param event: tkinter event (not used, but required)
         :param angle: angle relative to the needle's center
-        :return: None
+        :return: rotated needle image
         """
         self.canvas.itemconfig('needle', state=tk.HIDDEN)
         if angle is None:
             angle = self.needle_rotation_scale.get()
         angle += self.angle_deviation
-        rotated = ie.rotate_needle(train_image=self.train_image,
-                                   needle_image=self.needle_image,
-                                   needle_center=(self.x, self.y),
-                                   needle_angle=angle)
-        self.rotated_im = ie.cv_to_imagetk(rotated)
-        self.show_image(self.rotated_im)
-        if self.error_flags['reading_tested']:
-            self.update_reading_button()
+        rotated, needle = ie.rotate_needle(train_image=self.train_image,
+                                           needle_image=self.needle_image,
+                                           needle_center=(self.x, self.y),
+                                           needle_angle=angle)
+
+        if show:
+            self.rotated_im = ie.cv_to_imagetk(rotated)
+            self.show_image(self.rotated_im)
+            if self.error_flags['reading_tested']:
+                self.update_reading_button()
+        return needle
 
     def set_zero_needle_rotation(self):
         """
@@ -1186,6 +1209,19 @@ class AnalogCalibrator(Calibrator):
             mb.showerror('Error', final_message)
             return True
         return False
+
+    def save_calibration_data(self):
+        """
+        Save to XML the calibration data, write train and needle images
+        :return:
+        """
+        cv2.imwrite(self.train_image_path, self.train_image)
+        needle = self.rotate_needle(angle=0,
+                                    show=False)
+        cv2.imwrite(self.needle_image_path, needle)
+        self.set_calibration_parameters()
+        xmlr.dict_to_xml(self.calibration, self.xml_file, gauge=True)
+        typer.secho('Saved parameters to {}'.format(self.xml_file), fg='green')
 
 
 class DigitalCalibrator(Calibrator):
