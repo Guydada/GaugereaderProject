@@ -6,16 +6,12 @@ import src.gauges.gauge as g
 import src.utils.envconfig as env
 
 
-analog_gauge = g.AnalogGauge()
+# calibration = g.AnalogGauge.calibrate()
+# analog_gauge = g.AnalogGauge(calibration)
 
+xml_file = '../data/gauges/camera_1/gauge_1/gauge_params.xml'
+analog_gauge = g.AnalogGauge(xml_file)
+# analog_gauge.create_train_test_set()
+model = gn.GaugeNet()
 
-# model = gn.GaugeNet()
-# criterion = torch.nn.MSELoss()
-# optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-# #
-# #
-# analog_gauge.train(model=model,
-#                    criterion=criterion,
-#                    optimizer=optimizer,
-#                    epochs=1)
-
+analog_gauge.train(model=model)

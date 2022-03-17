@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="ubuntu@ec2-18-195-134-24.eu-central-1.compute.amazonaws.com:22 key" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="CaptainsAWS" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
+      <paths name="CaptainsAWS">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ubuntu/gaugereader/deploy" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="ubuntu@ec2-18-195-134-24.eu-central-1.compute.amazonaws.com:22 key">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/ubuntu/gaugereader" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/ubuntu/gaugereader/deploy" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

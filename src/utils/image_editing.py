@@ -104,13 +104,12 @@ def frame_to_read_image(frame,
 scale = list(np.linspace(0.81, 0.99, 10))
 
 process_image = tf.Compose([tf.Resize(env.TRAIN_IMAGE_SIZE),
+                            tf.Grayscale(num_output_channels=1),
                             tf.ToTensor(),
-                            tf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+                            tf.Normalize(mean=[0.5], std=[0.5])])
 
 image_augmentor = tf.Compose([tf.RandomApply([tf.ColorJitter(0.1, 0.1, 0.1, 0.1)], p=0.5)])
 
-
-# tf.RandomApply([tf.RandomRotation(0.5)], p=0.25)])
 
 
 @dataclass

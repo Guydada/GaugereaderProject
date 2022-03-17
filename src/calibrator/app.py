@@ -5,15 +5,10 @@ import tkinter.ttk as ttk
 import tkinter as tk
 import tkinter.messagebox as mb
 import tkinter.filedialog as fd
-import tkinter.simpledialog as sd
 import PIL.Image as Image
-import PIL.ImageDraw as ImageDraw
 import PIL.ImageTk as ImageTk
 import time
 import typer
-
-from copy import copy
-from pathlib import Path
 
 import src.utils.image_editing as ie
 import src.utils.point_math as point_math
@@ -23,32 +18,17 @@ import src.utils.convert_xml as xmlr
 
 
 class Calibrator:
-    def __init__(self,
-                 calibration_image: str,
-                 index: str,
-                 camera_id: str = None):
+    def __init__(self):
         """
         A class that creates a GUI for the calibration process. This is the main class of the calibrator,
         Alone it does not do anything, uses as an archi-class for the AnalogCalibrator and the DigitalCalibrator.
-        :param calibration_image:
-        :param index:
-        :param camera_id:
         """
+        self.calibration = {}
+        self.calibration_image = None
 
-        # Outer variables
-        self.camera_id = camera_id
-        self.index = index
-        self.calibration_image = calibration_image
-
-        # Inner variables
         # Paths
-        self.directory, self.xml_file = env.dir_file_from_camera_gauge(camera_id, index)
-        if self.calibration_image is None:
-            self.calibration_image_path = None
-        else:
-            self.calibration_image_path = os.path.join(self.directory, self.calibration_image)
-        self.train_image_path = Path(self.directory).joinpath(env.TRAIN_IMAGE_NAME).as_posix()
-        self.current_image_path = None
+        self.directory = None
+        self.calibration_image_path = None
 
         # Images
         self.backup_cv = None
@@ -57,7 +37,6 @@ class Calibrator:
 
         # Calibration data and parameters
         self.draw_params = {}  # placeholder for params of image editing
-        self.calibration = {}
         self.current_reading = 0
 
         # Specific Buttons and top frames containers
@@ -142,7 +121,7 @@ class Calibrator:
         """
         file = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label='File', menu=file)
-        file.add_command(label='Change Calibration Image', command=self.change_calibration_image)
+        file.add_command(label='Load Calibration Image', command=self.change_calibration_image)
         file.add_command(label='Save to XML', command=self.save_calibration_data)
         file.add_command(label='Exit', command=self.window.destroy)
         self.menubar.add_cascade(label='Help', command=lambda: None)  # TODO: add help menu images for workflows
@@ -176,9 +155,10 @@ class Calibrator:
                                                       from_=-180,
                                                       to=180,
                                                       command=self.rotate_image,
+                                                      resolution=0.001,
+                                                      width=360,
                                                       orient=tk.HORIZONTAL,
                                                       label='Rotate')
-
         for element in self.image_edit_controls:
             self.image_edit_controls[element].pack(side=tk.TOP)
 
@@ -283,20 +263,18 @@ class Calibrator:
 
     # Image loading methods
     def load_image_from_file(self,
-                             image_name: str = None,
+                             path: str = None,
                              prompt: bool = False):
         """
         Load an image from a file
-        :param image_name:
+        :param path:
         :param prompt: If true, prompt the user a warning for resetting the image
         :return:
         """
-        if image_name is None:
-            image_name = self.calibration_image
+        if path is not None:
+            self.calibration_image_path = path
         self.reset_to_start(prompt=prompt)
-        path = Path(self.directory).joinpath(image_name).as_posix()
-        self.current_image_path = path
-        self.img_cv = cv2.imread(self.current_image_path)
+        self.img_cv = cv2.imread(self.calibration_image_path)
         if self.img_cv is None:
             raise Exception("Image not found / not readable")
         self.update_main_image(self.img_cv)
@@ -348,16 +326,15 @@ class Calibrator:
             tk.messagebox.showwarning('Warning',
                                       'This will reset all calibration data and replace calibration image path')
         try:
-            self.calibration_image_path = fd.askopenfilename(initialdir=env.CALIBRATION_PATH,
+            self.calibration_image_path = fd.askopenfilename(initialdir=env.FRAMES_PATH,
                                                              title="Select Calibration Image",
                                                              filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
         except TypeError:
             return
         if isinstance(self.calibration_image_path, tuple):
             return None
-        self.directory = Path(self.calibration_image_path).parent.as_posix()
         self.calibration_image = os.path.basename(self.calibration_image_path)
-        self.load_image_from_file(self.calibration_image)
+        self.load_image_from_file()
         return self.calibration_image_path
 
     def resize_cv(self,
@@ -656,26 +633,21 @@ class Calibrator:
         """
         pass
 
-    def run(self):
+    def run(self,
+            index: int,
+            camera_id: int,
+            frame_name: str = None,
+            directory: str = None) -> dict:
         """
         Runs the main loop.
-        :return:
+        :return: Calibration dict
         """
-        self.window.mainloop()
-        return self.calibration
+        pass
 
 
 class AnalogCalibrator(Calibrator):
-    def __init__(self,
-                 calibration_image: str,
-                 index: str,
-                 camera_id: str = None):
-        super().__init__(calibration_image=calibration_image,
-                         index=index,
-                         camera_id=camera_id)
-
-        # Paths
-        self.needle_image_path = Path(self.directory).joinpath(env.NEEDLE_IMAGE_NAME).as_posix()
+    def __init__(self):
+        super().__init__()
 
         # Images
         self.train_image = None
@@ -734,10 +706,6 @@ class AnalogCalibrator(Calibrator):
         # Add gauge steps
         self.add_toolbar_buttons()
         self.add_gauge_steps_frame()
-
-        # Open Image and run
-        if self.calibration_image is not None:
-            self.load_image_from_file(image_name=calibration_image)
 
     # Specific Frames and Widgets for Analog Calibration
     def add_toolbar_buttons(self):
@@ -1249,13 +1217,35 @@ class AnalogCalibrator(Calibrator):
         Save to XML the calibration data, write train and needle images
         :return:
         """
-        cv2.imwrite(self.train_image_path, self.train_image)
+        train_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
+        self.calibration['train_image'] = train_path
+        cv2.imwrite(train_path, self.train_image)
         needle = self.rotate_needle(angle=0,
                                     show=False)
-        cv2.imwrite(self.needle_image_path, needle)
+        needle_path = os.path.join(self.directory, env.NEEDLE_IMAGE_NAME)
+        self.calibration['needle_image'] = needle_path
+        cv2.imwrite(needle_path, needle)
         self.set_calibration_parameters()
-        xmlr.dict_to_xml(self.calibration, self.xml_file, gauge=True)
-        typer.secho('Saved parameters to {}'.format(self.xml_file), fg='green')
+        xml_file = os.path.join(self.directory, env.XML_FILE_NAME)
+        xmlr.dict_to_xml(self.calibration, xml_file, gauge=True)
+        typer.secho('Saved parameters to {}'.format(xml_file), fg='green')
+
+    def run(self,
+            index: int,
+            camera_id: int,
+            frame_name: str = None,
+            directory: str = None) -> dict:
+        """
+        Runs the main loop.
+        :return: Analog gauge calibration data (dict)
+        """
+        self.calibration_image = frame_name
+        self.directory = directory
+        self.calibration['directory'] = self.directory
+        self.calibration['index'] = index
+        self.calibration['camera_id'] = camera_id
+        self.window.mainloop()
+        return self.calibration
 
 
 class DigitalCalibrator(Calibrator):
@@ -1263,6 +1253,4 @@ class DigitalCalibrator(Calibrator):
                  calibration_image: str,
                  index: str,
                  camera_id: str = None):
-        super().__init__(calibration_image=calibration_image,
-                         index=index,
-                         camera_id=camera_id)
+        super().__init__()
