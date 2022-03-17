@@ -4,8 +4,6 @@ import src.utils.envconfig as env
 import src.utils.convert_xml as xml
 import src.utils.input_output as io
 
-# TODO: add CLI interface
-
 
 def add_camera(camera_id: str):
     """

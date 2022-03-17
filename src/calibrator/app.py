@@ -21,9 +21,6 @@ import src.utils.circle_dectection as cd
 import src.utils.envconfig as env
 import src.utils.convert_xml as xmlr
 
-if os.environ.get('DISPLAY','') == '':
-    print('no display found. Using :0.0')
-    os.environ.__setitem__('DISPLAY', ':0.0')
 
 class Calibrator:
     def __init__(self,
@@ -46,7 +43,10 @@ class Calibrator:
         # Inner variables
         # Paths
         self.directory, self.xml_file = env.dir_file_from_camera_gauge(camera_id, index)
-        self.calibration_image_path = Path(self.directory).joinpath(calibration_image).as_posix()
+        if self.calibration_image is None:
+            self.calibration_image_path = None
+        else:
+            self.calibration_image_path = os.path.join(self.directory, self.calibration_image)
         self.train_image_path = Path(self.directory).joinpath(env.TRAIN_IMAGE_NAME).as_posix()
         self.current_image_path = None
 
@@ -95,6 +95,9 @@ class Calibrator:
         self.image_frame = tk.Frame(master=self.window, width=env.WINDOW_SIZE[0], height=env.WINDOW_SIZE[1])
         self.image_frame.configure(background='gray')
 
+        # Image editing frame
+        self.image_edit_controls = {}
+
         # Gauge specific steps
         self.gauge_steps_frame = None
         self.create_gauge_steps_frame()
@@ -102,7 +105,7 @@ class Calibrator:
         # Image editing variables
         self.active_button = None
         self.active_shape = None
-        self.perspective_bar = {}
+        self.perspective_bars = {}
 
         # Calibration specific toolbar
         self.calibration_toolbar = None
@@ -118,13 +121,8 @@ class Calibrator:
         self.draw = None
 
         # Perspective transform variables
-        self.perspective_transform = None
-        self.perspective_transform_points = []
-        self.perspective_values = {'top': [0, 0],
-                                   'bottom': [self.w, 0],
-                                   'left': [0, self.h],
-                                   'right': [self.w, self.h]}
-
+        self.perspective = ie.Perspective()
+        self.perspective_bars = dict.fromkeys(self.perspective.point_names)
         self.perspective_im = None
 
     def create_main_window(self):
@@ -168,7 +166,21 @@ class Calibrator:
         Creates the image editing frame of the calibrator. Save calibration data to calibration data
         :return:
         """
-        pass
+        self.backup_cv = self.img_cv.copy()
+        self.top_frames['edit'] = tk.Toplevel(self.window,
+                                              width=300,
+                                              height=300,
+                                              background='gray')
+        self.top_frames['edit'].resizable(width=True, height=True)
+        self.image_edit_controls['rotate'] = tk.Scale(self.top_frames['edit'],
+                                                      from_=-180,
+                                                      to=180,
+                                                      command=self.rotate_image,
+                                                      orient=tk.HORIZONTAL,
+                                                      label='Rotate')
+
+        for element in self.image_edit_controls:
+            self.image_edit_controls[element].pack(side=tk.TOP)
 
     def create_gauge_steps_frame(self):
         """
@@ -198,7 +210,6 @@ class Calibrator:
             message = 'Please crop the image before setting the perspective'
             mb.showerror('Error', message)
             return
-        self.calibration['perspective'] = [[0, 0], [self.w, 0], [self.w, self.h], [0, self.h]]
         self.step_buttons['set_perspective'].config(bg='green')
         self.error_flags['perspective'] = True
         self.backup_cv = self.img_cv.copy()
@@ -207,17 +218,24 @@ class Calibrator:
                                                      width=200,
                                                      height=200)
         self.top_frames['perspective'].title('Set Perspective')
+        self.perspective.reset(self.w)
         tk.Button(self.top_frames['perspective'],
                   text='Set Points',
                   command=self.use_set_perspective_points).pack(side=tk.TOP)
-        for bar in self.perspective_values.keys():
-            self.perspective_bar[bar] = tk.Scale(self.top_frames['perspective'],
-                                                 from_=-self.w,
-                                                 to=self.w,
-                                                 command=self.bar_change_perspective,
-                                                 orient=tk.HORIZONTAL,
-                                                 label=bar)
-            self.perspective_bar[bar].pack(side=tk.TOP)
+        for bar in self.perspective_bars.keys():
+            self.perspective_bars[bar] = tk.Scale(self.top_frames['perspective'],
+                                                  from_=-self.w,
+                                                  to=self.w,
+                                                  command=self.bar_change_perspective,
+                                                  orient=tk.HORIZONTAL,
+                                                  label=bar)
+            if bar in ['tl_x', 'tl_y', 'tr_y', 'bl_x']:
+                self.perspective_bars[bar].set(0)
+            elif bar in ['tr_x', 'br_x']:
+                self.perspective_bars[bar].set(self.w)
+            else:
+                self.perspective_bars[bar].set(self.h)
+            self.perspective_bars[bar].pack(side=tk.TOP)
         tk.Button(self.top_frames['perspective'],
                   text='Reset Perspective',
                   command=self.reset_perspective).pack(side=tk.TOP)
@@ -232,7 +250,8 @@ class Calibrator:
                                             height=env.WINDOW_SIZE[1])
         self.calibration_toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH)
 
-    def create_canvas(self):
+    def create_canvas(self,
+                      file: str = 'img.ppm'):
         """
         Creates the canvas of the calibrator.
         :return:
@@ -264,15 +283,17 @@ class Calibrator:
 
     # Image loading methods
     def load_image_from_file(self,
-                             image_name: str = None):
+                             image_name: str = None,
+                             prompt: bool = False):
         """
         Load an image from a file
         :param image_name:
+        :param prompt: If true, prompt the user a warning for resetting the image
         :return:
         """
         if image_name is None:
             image_name = self.calibration_image
-        self.reset_to_start(prompt=False)
+        self.reset_to_start(prompt=prompt)
         path = Path(self.directory).joinpath(image_name).as_posix()
         self.current_image_path = path
         self.img_cv = cv2.imread(self.current_image_path)
@@ -281,7 +302,7 @@ class Calibrator:
         self.update_main_image(self.img_cv)
 
     def update_main_image(self,
-                          image,
+                          image=None,
                           keep_window: bool = False,
                           resize: bool = True):
         """
@@ -292,7 +313,8 @@ class Calibrator:
         :param resize:
         :return:
         """
-        # check if image is Image
+        if image is None:
+            image = self.img_cv
         if isinstance(image, Image.Image):
             image.convert('RGB')
             self.img_cv = np.array(image)
@@ -303,7 +325,6 @@ class Calibrator:
         else:
             self.img_cv = image
             self.img_im = ie.cv_to_imagetk(self.img_cv)
-
         if resize:
             self.img_cv = self.resize_cv(self.img_cv)
             self.img_im = ie.cv_to_imagetk(self.img_cv)
@@ -311,26 +332,33 @@ class Calibrator:
             self.h = self.img_cv.shape[0]
             self.w = self.img_cv.shape[1]
         self.create_canvas()
-        w_w, w_h = int(self.w * 1.4), int(self.h * 1.1)
+        w_w, w_h = int(self.w * 1.5), int(self.h * 1.2)
         if not keep_window:
             self.window.geometry(f'{w_w}x{w_h}')
         self.show_image()
 
-    def change_calibration_image(self):
+    def change_calibration_image(self,
+                                 prompt: bool = True):
         """
         Opens the image from the file dialog. This will change the original calibration image.
-        :return:
+        :param prompt: If true, prompt the user a warning for resetting the image
+        :return: calibration image path
         """
-        # Prompt warning
-        tk.messagebox.showwarning('Warning', 'This will reset all calibration data and replace calibration image path')
-        # Open file dialog
-        self.calibration_image_path = fd.askopenfilename(initialdir=env.CALIBRATION_PATH,
-                                                         title="Select Calibration Image",
-                                                         filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
-        # get directory
+        if prompt and self.calibration_image is not None:
+            tk.messagebox.showwarning('Warning',
+                                      'This will reset all calibration data and replace calibration image path')
+        try:
+            self.calibration_image_path = fd.askopenfilename(initialdir=env.CALIBRATION_PATH,
+                                                             title="Select Calibration Image",
+                                                             filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
+        except TypeError:
+            return
+        if isinstance(self.calibration_image_path, tuple):
+            return None
         self.directory = Path(self.calibration_image_path).parent.as_posix()
         self.calibration_image = os.path.basename(self.calibration_image_path)
         self.load_image_from_file(self.calibration_image)
+        return self.calibration_image_path
 
     def resize_cv(self,
                   image: np.ndarray):
@@ -346,6 +374,17 @@ class Calibrator:
         image = cv2.resize(image, (self.w, self.h), interpolation=cv2.INTER_AREA)
         return image
 
+    def rotate_image(self, event):
+        """
+        Rotates the image according to the 'Rotate' scale in the image edit frame
+        :param event:
+        :return:
+        """
+        self.update_main_image(self.backup_cv)
+        angle = self.image_edit_controls['rotate'].get()
+        rotated = ie.rotate_image(self.img_cv, angle)
+        self.update_main_image(rotated)
+
     def draw_shape(self):
         """
         Draws the shape on the canvas. This is used to make the drawing "flexible" and allow less
@@ -356,8 +395,8 @@ class Calibrator:
         self.canvas.bind("<ButtonRelease-1>", self.on_stop)
         self.canvas.bind("<Double-1>", self.on_clear)
         if self.draw_params['tag'] is not 'perspective':
-            self.canvas.bind("<B1-Motion>", self.on_grow)
             self.canvas.bind("<ButtonRelease-3>", self.on_move)
+            self.canvas.bind("<B1-Motion>", self.on_grow)
 
     def draw_point(self, event):
         """
@@ -370,7 +409,6 @@ class Calibrator:
                                 fill=self.draw_params['fill'],
                                 width=self.draw_params['width'],
                                 tag=self.draw_params['tag'])
-
 
     def on_start(self, event):
         """
@@ -434,19 +472,7 @@ class Calibrator:
         if self.draw_params['tag'] == 'crop':
             self.crop_image()
         elif self.draw_params['tag'] is 'perspective':
-            self.perspective_transform_points.append((event.x, event.y))
-            if len(self.perspective_transform_points) <= 4:
-                self.canvas.delete('perspective_polygon')
-                self.canvas.create_polygon(self.perspective_transform_points,
-                                           fill='',
-                                           outline='red',
-                                           width=2,
-                                           tag='perspective_polygon')
-                self.draw_point(event)
-            elif len(self.perspective_transform_points) == 5:
-                self.four_points_perspective_transform(mode='points')
-                self.perspective_transform_points = []
-
+            self.draw_change_perspective(event)
         self.stop_actions()
 
     def stop_actions(self):
@@ -469,58 +495,65 @@ class Calibrator:
         self.active_shape = self.canvas.create_oval
         self.draw_shape()
 
-    def four_points_perspective_transform(self,
-                                          mode: str = 'bars'):
+    def four_points_perspective_transform(self):
         """
         Transforms the image according to the set points
         :return:
         """
-        self.calibration['perspective'] = self.perspective_transform_points
-        self.img_cv = ie.four_point_transform(self.img_cv,
-                                              self.perspective_transform_points)
-        if mode is not 'bars':
-            self.perspective_im = self.img_cv.copy()
+        self.img_cv = ie.four_point_transform(self.img_cv, self.perspective.points)
         self.apply_crop(0, 0, self.img_cv.shape[1], self.img_cv.shape[0], resize=False)
         self.canvas.delete('perspective')
 
-    def bar_change_perspective(self, event):
+    def bar_change_perspective(self,
+                               event: object = None):
         """
         Change the perspective transform points when the user moves the slider
         :return: None
         """
-        if self.perspective_im is not None:
-            self.update_main_image(self.perspective_im)
-        else:
-            self.update_main_image(self.backup_cv)
-        for bar in self.perspective_bar.keys():
-            value = self.perspective_bar[bar].get()
-            self.perspective_values[bar] = value
-        scales = [self.perspective_values[key] for key in self.perspective_values.keys()]
-        scales = point_math.get_perspective_points(self.w,
-                                                   self.h,
-                                                   scales)
-        self.calibration['perspective'] = scales
-        self.img_cv = ie.four_point_transform(self.img_cv,
-                                              scales)
-        self.apply_crop(0, 0, self.img_cv.shape[1], self.img_cv.shape[0], resize=False)
+        self.img_cv = self.backup_cv.copy()
+        scales = [bar.get() for bar in self.perspective_bars.values()]
+        self.perspective.set_points(scales, order=False)
+        self.four_points_perspective_transform()
+
+    def draw_change_perspective(self, event):
+        """
+        Draw the perspective transform points when the user moves the mouse
+        :return: None
+        """
+        if len(self.perspective.draw) < 4:
+            self.perspective.draw.append((event.x, event.y))
+            self.canvas.delete('perspective_polygon')
+            self.canvas.create_polygon(self.perspective.draw,
+                                       fill='',
+                                       outline='red',
+                                       width=2,
+                                       tag='perspective_polygon')
+            self.draw_point(event)
+        elif len(self.perspective.draw) == 4:
+            self.perspective.set_points()
+            for bar in self.perspective_bars.keys():
+                self.perspective_bars[bar].set(self.perspective[bar])
+            self.perspective.delete_draw()
 
     def reset_perspective(self):
         """
         Reset the perspective transform points
         :return: None
         """
-        self.update_main_image(self.backup_cv)
-        self.perspective_im = None
-        for bar in self.perspective_bar.keys():
-            self.perspective_bar[bar].set(0)
+        self.img_cv = self.backup_cv.copy()
+        self.perspective.reset(self.w)
+        for bar in self.perspective_bars.keys():
+            self.perspective_bars[bar].set(self.perspective[bar])
 
     def use_crop(self):
         """
         This function is called when the user clicks on the crop button.
         :return:
         """
+        self.load_image_from_file()
         self.canvas.delete('crop')
         self.draw_params = dict(tag='crop', outline='black')
+        self.step_buttons['crop'].config(relief='sunken')
         self.active_shape = self.canvas.create_rectangle
         self.draw_shape()
 
@@ -556,9 +589,9 @@ class Calibrator:
         cropped_image = self.img_cv[y:y_diff, x:x_diff]
         cropped_image = cv2.resize(cropped_image, env.EDIT_IMAGE_SIZE)
         self.img_cv = cropped_image
-        self.update_main_image(image=self.img_cv,
-                               keep_window=True,
+        self.update_main_image(keep_window=True,
                                resize=resize)
+        self.step_buttons['crop'].config(relief='raised')
         self.error_flags['cropped'] = True
 
     def show_image(self,
@@ -842,7 +875,6 @@ class AnalogCalibrator(Calibrator):
         self.circle_detection_scales['min_r'].set(self.w / 3)
         self.circle_detection_scales['max_r'].set(1)
         self.circle_detection_scales['min_d'].set(1)
-        self.man_find_circles()
 
     # Specific stop_actions method for Analog Calibration
     def stop_actions(self):
@@ -912,7 +944,7 @@ class AnalogCalibrator(Calibrator):
 
     # Circle Detection Methods
     def man_find_circles(self,
-                         tweak: bool = True,
+                         tweak: bool = False,
                          auto_crop: bool = False):
         """
         Manually detect circles with the current parameters
@@ -950,7 +982,8 @@ class AnalogCalibrator(Calibrator):
             x, y, r = circles
             self.x, self.y, self.r = x, y, r
             self.error_flags['circles'] = True
-            self.tweak_circle_params(min_r, max_r, auto_crop)
+            if tweak:
+                self.tweak_circle_params(min_r, max_r, auto_crop)
             self.canvas.create_circle(x, y, r, tag='gauge', width=3, outline='green')
             self.canvas.create_circle(x, y, 5, fill='red', tag='center')
             self.img_im = ie.cv_to_imagetk(self.img_cv)
@@ -974,7 +1007,7 @@ class AnalogCalibrator(Calibrator):
                 self.crop_detection['max_r'] = max_r - 1
             else:
                 if self.circle_detection_scales['max_r'] is not None:
-                    self.circle_detection_scales['max_r'].set(min_r + 1)
+                    self.circle_detection_scales['max_r'].set(max_r + 1)
 
     def auto_find_circles(self,
                           auto_crop: bool = False):
@@ -1183,6 +1216,7 @@ class AnalogCalibrator(Calibrator):
         self.calibration['radius'] = self.r
         self.calibration['width'] = self.w
         self.calibration['height'] = self.h
+        self.calibration['perspective'] = self.perspective.points
 
     def flag_error_check(self,
                          flag_name: str):

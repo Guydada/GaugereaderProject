@@ -1,12 +1,9 @@
 import cv2
-import typer
-import torch
+from dataclasses import dataclass, asdict
 import numpy as np
-from PIL import ImageFilter
 import PIL.Image as Image
 import PIL.ImageTk as ImageTk
 import torchvision.transforms as tf
-import torchvision.transforms.functional as F
 
 import src.utils.envconfig as env
 import src.utils.point_math as pm
@@ -27,7 +24,9 @@ def cv_to_image(cv_image, show: bool = False):
     return image
 
 
-def rotate_image(img, angle, pivot):
+def rotate_image(img,
+                 angle,
+                 pivot=None):
     img = Image.fromarray(img)
     rotated = img.rotate(angle, center=pivot)
     return np.array(rotated)
@@ -64,13 +63,21 @@ def create_circle(obj,
     return obj.create_oval(x - r, y - r, x + r, y + r, **kwargs)
 
 
-def four_point_transform(image, pts):
+def four_point_transform(image,
+                         pts: list):
+    """
+    Apply a perspective transform to a frame, given the 4 points that define the
+    transformation. Returns the transformed frame and the perspective transform ordered points.
+    :param pts:
+    :param image: cv2 image
+    :param pts: points that define the transformation
+    :return: warped image and ordered points
+    """
     h, w = image.shape[:2]
     source = np.float32([[0, 0],
-              [w, 0],
-              [w, h],
-              [0, h]])
-    pts = pm.order_points(pts)
+                         [w, 0],
+                         [w, h],
+                         [0, h]])
     dest = np.float32(pts)
     M = cv2.getPerspectiveTransform(dest, source)
     warped = cv2.warpPerspective(image, M, (w, h))
@@ -101,4 +108,74 @@ process_image = tf.Compose([tf.Resize(env.TRAIN_IMAGE_SIZE),
                             tf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
 image_augmentor = tf.Compose([tf.RandomApply([tf.ColorJitter(0.1, 0.1, 0.1, 0.1)], p=0.5)])
+
+
 # tf.RandomApply([tf.RandomRotation(0.5)], p=0.25)])
+
+
+@dataclass
+class Perspective:
+    tl_x: int = 0
+    tl_y: int = 0
+    tr_x: int = 0
+    tr_y: int = 0
+    br_x: int = 0
+    br_y: int = 0
+    bl_x: int = 0
+    bl_y: int = 0
+
+    def __post_init__(self):
+        self.point_names = list(self.asdict().keys())
+        self.points = self.get_points()
+        self.draw = []
+
+    def asdict(self):
+        return asdict(self)
+
+    def aslist(self):
+        return list(self.asdict().values())
+
+    def get_points(self):
+        lst = self.aslist()
+        points = np.array(lst).reshape(4, 2).tolist()
+        return points
+
+    def set_points(self,
+                   points: list = None,
+                   order: bool = True):
+        if points is None:
+            points = self.draw
+        if len(points) != 4:
+            points = np.array(points).reshape(4, 2).tolist()
+        if order:
+            points = pm.order_points(points)
+        for i, key in enumerate(self.point_names):
+            j = i // 2
+            if key[-1] == 'x':
+                setattr(self, key, points[j][0])
+            else:
+                setattr(self, key, points[j][1])
+        self.points = points
+
+    def reset(self,
+              w: int,
+              h: int = None):
+        h = w if h is None else h
+        self.tl_x = 0
+        self.tl_y = 0
+        self.tr_x = w
+        self.tr_y = 0
+        self.br_x = w
+        self.br_y = h
+        self.bl_x = 0
+        self.bl_y = h
+
+    def delete_draw(self):
+        self.draw = []
+
+    def __getitem__(self, item):
+        return self.asdict()[item]
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+        self.points = self.get_points()

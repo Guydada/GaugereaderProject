@@ -22,58 +22,40 @@ import src.utils.image_editing as ie
 
 class Gauge:
     def __init__(self,
-                 timestamp: str,
-                 camera_id: str,
-                 index: str,
-                 description: str,
-                 calibration_image: str = None,
-                 calibration_file: str = None):
-
+                 camera_id: str = None,
+                 index: str = None,
+                 description: str = None,
+                 calibration_image: str = None):
         # Outer variables
-        self.timestamp = timestamp  # Time of creation
-        self.camera_id = camera_id
-        self.index = index
         self.description = description
         self.calibration_image = calibration_image
-        self.calibration = None
 
         # Inner variables
-        self.directory, self.xml_file = env.dir_file_from_camera_gauge(camera_id, index)
-        self._init_directory()
-        self.calibrated = False
+        if (camera_id is not None) and (index is not None):
+            self.camera_id, self.index = camera_id, index
+        else:
+            self.camera_id, self.index = env.DEV_CAM, env.DEV_GAUGE
+        self.directory, self.xml_file = env.dir_file_from_camera_gauge(self.camera_id, self.index)
+        self.init_directory()
 
         # Calibration
+        self.calibration = None
         self.calibrator_app = None
-        if calibration_file is not None:
-            self.calibrate_from_xml()
 
-    def _init_directory(self):  # TODO: add overwrite/skip option
+    def init_directory(self):
+        """
+        Create the directory for the gauge if it does not exist.
+        :return: None
+        """
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
             typer.echo(f'Created directory {self.directory}')
             os.mkdir(os.path.join(self.directory, 'read_frames'))
 
-    def calibrate_from_xml(self):
-        """
-        Calibrate the gauge using the calibration data, save the calibration data to the xml file
-        :return:
-        """
-        self.calibration = xmlr.xml_to_dict(self.xml_file, gauge=True)
-        self.calibrated = True
-        return None
-
     def create_train_test_set(self,
                               train_size: float = 0.8,
                               test_size: float = 0.2,
                               random_state: int = 42):
-        pass
-
-    def save(self):
-        pass
-
-    @classmethod
-    def load(cls,
-             path: str):
         pass
 
     def as_dict(self):
@@ -86,45 +68,52 @@ class Gauge:
                     frame):
         pass
 
+    def save(self):
+        pass
+
+    @classmethod
+    def load(cls,
+             path: str):
+        pass
+
 
 class AnalogGauge(Gauge):
     def __init__(self,
-                 timestamp: str,
-                 camera_id: str,
-                 index: str,
-                 description: str,
-                 calibration_image: str = None,
-                 calibration_file: str = None):
-        super().__init__(timestamp=timestamp,
-                         camera_id=camera_id,
+                 camera_id: str = None,
+                 index: str = None,
+                 description: str = None,
+                 calibration_image: str = None):
+        super().__init__(camera_id=camera_id,
                          index=index,
                          description=description,
-                         calibration_image=calibration_image,
-                         calibration_file=calibration_file)
-        self.train_image_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
-        self.train_image = None
-        self.needle_image_path = os.path.join(self.directory, env.NEEDLE_IMAGE_NAME)
-        self.needle_image = None
-        self.data_cols = ['image_name', 'augmented', 'angle']
-        self.train_df = pd.DataFrame(columns=self.data_cols)
-        self.test_df = pd.DataFrame(columns=self.data_cols)
+                         calibration_image=calibration_image)
+        # Train/test set directories
         self.train_images_path = os.path.join(self.directory, 'train')
         self.test_images_path = os.path.join(self.directory, 'test')
+        self.train_image_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
+        self.needle_image_path = os.path.join(self.directory, env.NEEDLE_IMAGE_NAME)
+        # Train/test base images
+        self.train_image = None
+        self.needle_image = None
+        # Train/test set data frames
+        self.data_cols = ['image_name', 'augmented', 'real_angle']
+        self.train_df = pd.DataFrame(columns=self.data_cols)
+        self.test_df = pd.DataFrame(columns=self.data_cols)
 
         # Model variables and data structures
         self.trained = False
         self.scores = None
+
+        # Data sets and data loaders
         self.train_image_set = None
         self.test_image_set = None
         self.train_data_loader = None
         self.test_data_loader = None
 
-        if calibration_file is None:
-            self.calibrator_app = calibrator.AnalogCalibrator(calibration_image=calibration_image,
-                                                              index=index,
-                                                              camera_id=camera_id)
-            self.calibrator_app.run()
-            self.calibrated = True
+        self.calibrator_app = calibrator.AnalogCalibrator(calibration_image=self.calibration_image,
+                                                          index=self.index,
+                                                          camera_id=self.camera_id)
+        self.calibrator_app.run()
 
     def create_train_test_set(self,
                               train_size: float = 0.8,
@@ -140,7 +129,7 @@ class AnalogGauge(Gauge):
                 if check:
                     shutil.rmtree(path)
                     os.makedirs(path)
-        if not self.calibrated:
+        if self.calibration is None:
             raise ValueError('Gauge not calibrated')
         self.train_image = cv2.imread(self.train_image_path)
         if self.train_image is None:
