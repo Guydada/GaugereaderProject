@@ -4,6 +4,7 @@ import torch
 import typer
 import torch.nn as nn
 import pandas as pd
+import numpy as np
 import src.utils.envconfig as env
 
 
@@ -48,12 +49,12 @@ class GaugeNet(nn.Module):
         self.device = env.DEVICE
         self.criterion = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
-        self.train_report = {'epoch': [], 'loss': []}
+        self.train_report = {'epoch': [], 'train_loss': []}
 
     def train_sequence(self,
                        train_loader,
                        directory,
-                       epochs: int = 100):
+                       epochs: int = env.EPOCHS):
         for epoch in range(epochs):
             running_loss = 0.0
             count = 1
@@ -75,26 +76,29 @@ class GaugeNet(nn.Module):
             print('Finished epoch %d' % (epoch + 1), '\n'
                   'Training loss: %.3f' % avg_loss)
             self.train_report['epoch'].append(epoch + 1)
-            self.train_report['loss'].append(avg_loss)
+            self.train_report['train_loss'].append(avg_loss)
         path = os.path.join(directory, 'train_report.csv')
         train_report_df = pd.DataFrame(self.train_report)
         train_report_df.to_csv(path, index=False)
+        path = os.path.join(directory, 'test_report.csv')
         # self.save() # TODO: save model to disk if needed
 
     def test_sequence(self,
-                      test_loader,
-                      directory):
-        test_report = pd.DataFrame()
+                      directory,
+                      test_loader):
+        test_report = pd.DataFrame(columns=['real_angle', 'predicted_angle'])
         with torch.no_grad():
             for data, target in test_loader:
                 data, target = data.to(self.device), target.to(self.device)
                 output = self(data)
                 loss = self.criterion(output, target.reshape([env.BATCH_SIZE, 1]).float())
-                test_report['angle'] = target.cpu().numpy()
-                test_report['prediction'] = output.squeeze().cpu().numpy()
+                df = np.stack([target.cpu().numpy(), output.squeeze().cpu().numpy()], axis=1)
+                test_report = test_report.append(pd.DataFrame(df, columns=['real_angle', 'predicted_angle']))
+        typer.echo('Test loss: %.3f' % loss.detach())
+        test_report_df = pd.DataFrame(test_report)
         path = os.path.join(directory, 'test_report.csv')
-        test_report.to_csv(path, index=False)
-        typer.echo('Test loss: %.3f' % loss.item())
+        test_report_df.to_csv(path, index=False)
+        return test_report_df
 
     def save(self):
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
