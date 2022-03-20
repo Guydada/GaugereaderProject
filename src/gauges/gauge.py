@@ -146,10 +146,10 @@ class AnalogGauge(Gauge):
         :param camera_id: Camera ID of the gauge.
         :return: None
         """
-        directory_path = env.set_gauge_directory(index, camera_id)
-        calibration = calibrator.AnalogCalibrator.run(index=index,
-                                                     camera_id=camera_id,
-                                                     frame_name=calibration_image,
-                                                     directory=directory_path)
+        directory_path, index = env.set_gauge_directory(index, camera_id)
+        calibrator_app = calibrator.AnalogCalibrator()
+        calibration = calibrator_app.run(index=index,
+                                         camera_id=camera_id,
+                                         frame_name=calibration_image,
+                                         directory=directory_path)
         return calibration
-

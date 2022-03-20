@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="CaptainsAWS" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" serverName="CaptainsAWS" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="CaptainsAWS">
         <serverdata>
           <mappings>
             <mapping deploy="/home/ubuntu/gaugereader/deploy" local="$PROJECT_DIR$" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/notebooks" />
+          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="ubuntu@ec2-18-195-134-24.eu-central-1.compute.amazonaws.com:22 key">
@@ -17,6 +20,5 @@
         </serverdata>
       </paths>
     </serverData>
-    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

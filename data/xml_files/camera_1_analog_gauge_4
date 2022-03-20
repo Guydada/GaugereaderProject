@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gauge>
+	<needle>
+		<mask_lines>[(369, 316), (180, 190), 16]</mask_lines>
+		<mask_lines>[(191, 182), (203, 212), 16]</mask_lines>
+		<mask_lines>[(202, 211), (172, 203), 16]</mask_lines>
+		<mask_lines>[(193, 178), (172, 210), 16]</mask_lines>
+		<mask_lines>[(190, 172), (200, 202), 16]</mask_lines>
+		<mask_lines>[(171, 211), (214, 214), 16]</mask_lines>
+		<width>16</width>
+		<angle_deviation>-248.0488</angle_deviation>
+		<min_angle>133.9024</min_angle>
+		<max_angle>-114.1463</max_angle>
+	</needle>
+	<directory>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_4</directory>
+	<index>4</index>
+	<camera_id>1</camera_id>
+	<crop>121</crop>
+	<crop>232</crop>
+	<crop>233</crop>
+	<crop>344</crop>
+	<min_value>-15.0</min_value>
+	<max_value>0.0</max_value>
+	<units>Psi</units>
+	<train_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_4/train_image.jpg</train_image>
+	<needle_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_4/needle_image.jpg</needle_image>
+	<center>235</center>
+	<center>228</center>
+	<radius>0</radius>
+	<width>500</width>
+	<height>500</height>
+	<perspective>[26, 126]</perspective>
+	<perspective>[417, 131]</perspective>
+	<perspective>[402, 423]</perspective>
+	<perspective>[78, 454]</perspective>
+</gauge>

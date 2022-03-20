@@ -16,6 +16,8 @@ import src.utils.circle_dectection as cd
 import src.utils.envconfig as env
 import src.utils.convert_xml as xmlr
 
+dev_flag = True
+
 
 class Calibrator:
     def __init__(self):
@@ -23,6 +25,8 @@ class Calibrator:
         A class that creates a GUI for the calibration process. This is the main class of the calibrator,
         Alone it does not do anything, uses as an archi-class for the AnalogCalibrator and the DigitalCalibrator.
         """
+        # dev flag (no errors) # TODO: remove this
+        self.dev_flag = dev_flag
         self.calibration = {}
         self.calibration_image = None
 
@@ -56,9 +60,13 @@ class Calibrator:
         self.window = tk.Tk()
         self.create_main_window()
         self.canvas = None
+        self.canvas_inner_frame = None
         self.canvas_image = None
         self.grid_size = 50
         self.button_width = 18
+        self.scroll_x = None
+        self.scroll_y = None
+        self.zoom_scale = None
 
         # Menubar Frame
         self.menubar = tk.Menu(self.window)
@@ -137,8 +145,15 @@ class Calibrator:
         tk.Button(self.toolbar_frame, text='Reset', command=self.load_image_from_file).pack(side=tk.LEFT)
         tk.Button(self.toolbar_frame, text='Edit', command=self.create_image_edit_frame).pack(side=tk.LEFT)
         self.brush_size_bar = tk.Scale(self.toolbar_frame, from_=1, to=50, orient=tk.HORIZONTAL, label='Line width')
+        self.zoom_scale = tk.Scale(self.toolbar_frame,
+                                   from_=0.1, to=10,
+                                   orient=tk.HORIZONTAL,
+                                   label='Zoom',
+                                   resolution=0.1,
+                                   command=self.zoom)
         self.brush_size_bar.set(self.brush_size)
         self.brush_size_bar.pack(side=tk.RIGHT)
+        self.zoom_scale.pack(side=tk.RIGHT)
 
     def create_image_edit_frame(self):  # TODO: implement color options, perspective correction, etc.
         """
@@ -156,7 +171,7 @@ class Calibrator:
                                                       to=180,
                                                       command=self.rotate_image,
                                                       resolution=0.001,
-                                                      width=360,
+                                                      length=360,
                                                       orient=tk.HORIZONTAL,
                                                       label='Rotate')
         for element in self.image_edit_controls:
@@ -243,13 +258,36 @@ class Calibrator:
                                 bg='black',
                                 width=self.w,
                                 height=self.h,
+                                relief=tk.SUNKEN,
+                                highlightthickness=0,
+                                scrollregion=(0, 0, self.w, self.h),
                                 cursor="cross")
-        self.canvas_image = self.canvas.create_image(0, 0, image=self.img_im, anchor=tk.NW)
         self.canvas.place(anchor=tk.CENTER, relx=0.5, rely=0.5)
-        self.canvas.pack(anchor=tk.CENTER, padx=10, pady=10)
-        self.image_frame.place(anchor=tk.CENTER, relx=0.5, rely=0.5)
-        self.image_frame.pack(side=tk.TOP, anchor=tk.CENTER, padx=10, pady=10, fill=tk.BOTH, expand=True)
+        self.add_scrollbars()
+        self.canvas.pack(anchor=tk.CENTER, padx=10, pady=10, expand=True)
+        self.canvas_image = self.canvas.create_image(0, 0, image=self.img_im, anchor=tk.NW)
+        self.image_frame.pack(side=tk.TOP, anchor=tk.CENTER, padx=10, pady=10, expand=True)
         self.add_grid_to_canvas()
+
+    def add_scrollbars(self):
+        """
+        Add scrollbars to the canvas
+        :return:
+        """
+        if (self.scroll_x is not None) or (self.scroll_y is not None):
+            self.scroll_x.destroy()
+            self.scroll_y.destroy()
+        self.scroll_y = ttk.Scrollbar(self.image_frame,
+                                      command=self.canvas.yview,
+                                      orient=tk.VERTICAL)
+        self.scroll_x = ttk.Scrollbar(self.image_frame,
+                                      command=self.canvas.xview,
+                                      orient=tk.HORIZONTAL)
+        self.canvas.config(xscrollcommand=self.scroll_x.set,
+                           yscrollcommand=self.scroll_y.set)
+        self.canvas.bind("<MouseWheel>", self.canvas.xview)
+        self.scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        self.scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
 
     def add_grid_to_canvas(self):
         """
@@ -263,10 +301,12 @@ class Calibrator:
 
     # Image loading methods
     def load_image_from_file(self,
+                             resize: bool = True,
                              path: str = None,
                              prompt: bool = False):
         """
         Load an image from a file
+        :param resize:
         :param path:
         :param prompt: If true, prompt the user a warning for resetting the image
         :return:
@@ -277,7 +317,7 @@ class Calibrator:
         self.img_cv = cv2.imread(self.calibration_image_path)
         if self.img_cv is None:
             raise Exception("Image not found / not readable")
-        self.update_main_image(self.img_cv)
+        self.update_main_image(self.img_cv, resize=resize)
 
     def update_main_image(self,
                           image=None,
@@ -310,15 +350,19 @@ class Calibrator:
             self.h = self.img_cv.shape[0]
             self.w = self.img_cv.shape[1]
         self.create_canvas()
-        w_w, w_h = int(self.w * 1.5), int(self.h * 1.2)
+        w_w, w_h = int(self.w * 2), int(self.h * 2)
         if not keep_window:
             self.window.geometry(f'{w_w}x{w_h}')
         self.show_image()
+        file_name = os.path.basename(self.calibration_image_path)
+        self.window.title(f'{file_name} - Calibrator App')
 
     def change_calibration_image(self,
-                                 prompt: bool = True):
+                                 prompt: bool = True,
+                                 resize: bool = True):
         """
         Opens the image from the file dialog. This will change the original calibration image.
+        :param resize:
         :param prompt: If true, prompt the user a warning for resetting the image
         :return: calibration image path
         """
@@ -334,7 +378,7 @@ class Calibrator:
         if isinstance(self.calibration_image_path, tuple):
             return None
         self.calibration_image = os.path.basename(self.calibration_image_path)
-        self.load_image_from_file()
+        self.load_image_from_file(resize=resize)
         return self.calibration_image_path
 
     def resize_cv(self,
@@ -346,10 +390,23 @@ class Calibrator:
         """
         h = image.shape[0]
         w = image.shape[1]
-        self.w = int(w * env.WINDOW_SIZE[0] / w)
-        self.h = int(h * env.WINDOW_SIZE[1] / w)
+        if h < w:
+            factor = w
+        else:
+            factor = h
+        self.w = int(w * env.WINDOW_SIZE[0] / factor)
+        self.h = int(h * env.WINDOW_SIZE[1] / factor)
         image = cv2.resize(image, (self.w, self.h), interpolation=cv2.INTER_AREA)
         return image
+
+    def zoom(self, val):
+        """
+
+        :return:
+        """
+        scale = float(val)
+        self.canvas.scale('all', 0, 0, scale, scale)
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
 
     def rotate_image(self, event):
         """
@@ -370,9 +427,8 @@ class Calibrator:
         """
         self.canvas.bind('<ButtonPress-1>', self.on_start)
         self.canvas.bind("<ButtonRelease-1>", self.on_stop)
-        self.canvas.bind("<Double-1>", self.on_clear)
+        self.canvas.bind("<ButtonRelease-3>", self.on_clear)
         if self.draw_params['tag'] is not 'perspective':
-            self.canvas.bind("<ButtonRelease-3>", self.on_move)
             self.canvas.bind("<B1-Motion>", self.on_grow)
 
     def draw_point(self, event):
@@ -380,8 +436,7 @@ class Calibrator:
         Draws a point on the canvas.
         :return:
         """
-        x = event.x
-        y = event.y
+        x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
         self.canvas.create_oval(x, y, x, y,
                                 fill=self.draw_params['fill'],
                                 width=self.draw_params['width'],
@@ -393,7 +448,8 @@ class Calibrator:
         :param event: tkinter event
         :return: None
         """
-        self.start_x, self.start_y = event.x, event.y
+        x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
+        self.start_x, self.start_y = x, y
         if self.draw_params['tag'] is 'crop':
             self.draw_params['width'] = 3
         else:
@@ -409,13 +465,12 @@ class Calibrator:
         canvas = event.widget
         if self.drawn:
             canvas.delete(self.drawn)
-        if 'tag' in self.draw_params.keys():
-            self.canvas.delete(self.draw_params['tag'])
         shape = self.active_shape
+        x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
         line = shape(self.start_x,
                      self.start_y,
-                     event.x,
-                     event.y,
+                     x,
+                     y,
                      **self.draw_params)
         self.drawn = line
 
@@ -427,38 +482,34 @@ class Calibrator:
         """
         event.widget.delete(self.draw_params['tag'])
 
-    def on_move(self, event):
-        """
-        This function is called when the user releases the right mouse button on the canvas.
-        :param event: tkinter event
-        :return: None
-        """
-        if self.drawn:
-            canvas = event.widget
-            diff_x, diff_y = event.x - self.start_x, event.y - self.start_y
-            canvas.move(self.drawn, diff_x, diff_y)
-            self.start_x, self.start_y = event.x, event.y
-
     def on_stop(self, event):
         """
         This function is called when the user releases the left mouse button on the canvas.
         :param event: tkinter event
         :return: None
         """
-        self.end_x, self.end_y = event.x, event.y
+        self.end_x, self.end_y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
         if self.draw_params['tag'] == 'crop':
             self.crop_image()
         elif self.draw_params['tag'] is 'perspective':
             self.draw_change_perspective(event)
-        self.stop_actions()
+        self.stop_actions(event)
 
-    def stop_actions(self):
+    def stop_actions(self, event):
         """
         This function is called when the user stops drawing on the canvas. Specific implementation
         is needed for subclasses
         :return: None
         """
         pass
+
+    def unbind_canvas_buttons(self):
+        """
+        Unbinds the canvas buttons.
+        :return: None
+        """
+        for button in ['<ButtonPress-1>', '<ButtonRelease-1>', '<ButtonRelease-3>', '<B1-Motion>']:
+            self.canvas.unbind(button)
 
     def use_set_perspective_points(self):
         """
@@ -478,7 +529,11 @@ class Calibrator:
         :return:
         """
         self.img_cv = ie.four_point_transform(self.img_cv, self.perspective.points)
-        self.apply_crop(0, 0, self.img_cv.shape[1], self.img_cv.shape[0], resize=False)
+        self.apply_crop(0, 0,
+                        self.img_cv.shape[1],
+                        self.img_cv.shape[0],
+                        resize=True,
+                        keep_window=True)
         self.canvas.delete('perspective')
 
     def bar_change_perspective(self,
@@ -494,11 +549,12 @@ class Calibrator:
 
     def draw_change_perspective(self, event):
         """
-        Draw the perspective transform points when the user moves the mouse
+        Draw the perspective transform points when the use picks locations on the canvas
         :return: None
         """
         if len(self.perspective.draw) < 4:
-            self.perspective.draw.append((event.x, event.y))
+            x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
+            self.perspective.draw.append((x, y))
             self.canvas.delete('perspective_polygon')
             self.canvas.create_polygon(self.perspective.draw,
                                        fill='',
@@ -527,7 +583,7 @@ class Calibrator:
         This function is called when the user clicks on the crop button.
         :return:
         """
-        self.load_image_from_file()
+        self.load_image_from_file(resize=True)
         self.canvas.delete('crop')
         self.draw_params = dict(tag='crop', outline='black')
         self.step_buttons['crop'].config(relief='sunken')
@@ -545,17 +601,23 @@ class Calibrator:
         x_diff, y_diff = self.start_x + diff, self.start_y + diff
         self.step_buttons['crop'].config(bg='green')
         self.calibration['crop'] = (y, y_diff, x, x_diff)
-        self.apply_crop(x, y, x_diff, y_diff, resize=False)
+        self.apply_crop(x, y,
+                        x_diff,
+                        y_diff,
+                        resize=True,
+                        keep_window=True)
 
     def apply_crop(self,
                    x: int,
                    y: int,
                    x_diff: int,
                    y_diff: int,
-                   resize: bool = False):
+                   resize: bool = False,
+                   keep_window: bool = False):
         """
         Crop the image to the rectangle defined by the start and end points, force square size for training,
         save the image and update the image frame
+        :param keep_window:
         :param x: int x coordinate of the top left corner of the rectangle
         :param y: int y coordinate of the top left corner of the rectangle
         :param x_diff: int x distance of the bottom right corner of the rectangle
@@ -564,10 +626,14 @@ class Calibrator:
         :return: None
         """
         cropped_image = self.img_cv[y:y_diff, x:x_diff]
-        cropped_image = cv2.resize(cropped_image, env.EDIT_IMAGE_SIZE)
+        try:
+            cropped_image = cv2.resize(cropped_image, env.EDIT_IMAGE_SIZE)
+        except cv2.error:
+            raise Exception('Auto crop failed, please crop manually')
         self.img_cv = cropped_image
-        self.update_main_image(keep_window=True,
+        self.update_main_image(keep_window=keep_window,
                                resize=resize)
+        # get file name from path
         self.step_buttons['crop'].config(relief='raised')
         self.error_flags['cropped'] = True
 
@@ -579,8 +645,7 @@ class Calibrator:
         :return: None
         """
         if image is None:
-            self.canvas.itemconfig(self.canvas_image, image=self.img_im, tag='canvas_image')
-            return
+            image = self.img_im
         elif isinstance(image, np.ndarray):
             image = ie.cv_to_imagetk(image)
         self.canvas.itemconfig(self.canvas_image, image=image, tag='canvas_image')
@@ -675,6 +740,7 @@ class AnalogCalibrator(Calibrator):
         self.value_diff = 0
         self.angle_diff = 0
         self.value_step = 0
+        self.calibration['needle'] = {}
 
         # add error flags
         flags = ['zero_needle_rotation',
@@ -797,17 +863,17 @@ class AnalogCalibrator(Calibrator):
     def create_find_needle_frame(self):
         """
         Creates the frame for the needle finding and calibration the gauge text parameters
-        :return:
-        """  # TODO: check how to not allow 2 frames to be created at the same time
+        :return: None
+        """
         if self.flag_error_check('perspective'):
             return
         self.find_needle_frame = tk.Toplevel(master=self.window,
                                              width=200,
                                              height=300)
         dense = tk.TOP
-        self.step_buttons['find_needle'] = tk.Button(self.find_needle_frame, text='Find Needle',
-                                                     command=self.use_mark_needle)
-        self.step_buttons['find_needle'].pack(side=dense)
+        self.buttons['find_needle'] = tk.Button(self.find_needle_frame, text='Find Needle',
+                                                command=self.use_mark_needle)
+        self.buttons['find_needle'].pack(side=dense)
         for key in self.text_params:
             self.text_params[key] = tk.Entry(self.find_needle_frame,
                                              width=10,
@@ -836,27 +902,45 @@ class AnalogCalibrator(Calibrator):
             self.circle_detection_scales[key] = tk.Scale(self.circle_frame,
                                                          from_=1,
                                                          to=self.img_cv.shape[0],
-                                                         orient=tk.VERTICAL,
+                                                         orient=tk.HORIZONTAL,
                                                          label=key,
                                                          command=self.man_find_circles)
-            self.circle_detection_scales[key].pack(side=tk.LEFT, anchor=tk.CENTER)
+            self.circle_detection_scales[key].pack(side=tk.TOP, anchor=tk.CENTER)
         self.circle_detection_scales['min_r'].set(self.w / 3)
         self.circle_detection_scales['max_r'].set(1)
         self.circle_detection_scales['min_d'].set(1)
+        tk.Button(self.circle_frame,
+                  text='Find Center Manually',
+                  command=self.use_mark_circle_center).pack(side=tk.TOP,
+                                                            anchor=tk.CENTER)
+
+    def on_clear(self, event):
+        """
+        This function is called when the user double-clicks on the canvas.
+        :param event: tkinter event
+        :return: None
+        """
+        event.widget.delete(self.draw_params['tag'])
+        if self.draw_params['tag'] == 'needle':
+            self.calibration['needle']['mask_lines'] = []
 
     # Specific stop_actions method for Analog Calibration
-    def stop_actions(self):
+    def stop_actions(self, event):
         """
         Analog class specific stop method
         :return:
         """
-        # Gather the needle coordinates (from the drawn line) to mask the train image (inpainting)
-        self.calibration[self.draw_params['tag']] = {'point1': (self.start_x, self.start_y),
-                                                     'point2': (self.end_x, self.end_y)}
         if self.draw_params['tag'] == 'needle':
+            self.calibration['needle']['mask_lines'].append([(self.start_x, self.start_y),
+                                                             (self.end_x, self.end_y),
+                                                             self.draw_params['width']])
             self.error_flags['needle_found'] = True
             self.calibration['needle']['width'] = self.draw_params['width']
             self.mask_needle()
+        elif self.draw_params['tag'] == 'center':
+            self.x, self.y = self.start_x, self.start_y
+            self.draw_point(event)
+            self.error_flags['center_found'] = True
 
     # Find needle methods
     def use_mark_needle(self):
@@ -864,10 +948,41 @@ class AnalogCalibrator(Calibrator):
         Use the mark needle button to mark the needle
         :return: None
         """
-        self.step_buttons['find_needle'].config(relief=tk.SUNKEN)
-        self.draw_params = dict(tag='needle', fill='white')
+        self.buttons['find_needle'].config(relief=tk.SUNKEN)
+        self.calibration['needle']['mask_lines'] = []
+        self.draw_params = dict(tag='needle',
+                                fill='white')
         self.active_shape = self.canvas.create_line
         self.draw_shape()
+
+    def use_mark_circle_center(self):
+        """
+        Mark the center of the circle manually if the circle is not detected or detected incorrectly
+        :return: None
+        """
+
+        for tag in ['gauge', 'no_circles']:
+            self.canvas.delete(tag)
+        self.canvas.bind('<Button-1>', self.move_create_center_object)
+
+    def move_create_center_object(self, event):
+        """
+        When called, moves the center point to a new location on canvas. If no center exists, create one
+        :param event:
+        :return:
+        """
+        items = list(self.canvas.find_withtag('center'))
+        if len(items) == 0:
+            x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
+            self.x, self.y = x, y
+            tk.Canvas.create_circle = ie.create_circle
+            self.canvas.create_circle(self.x, self.y, 10, fill='red', tag='center')
+            self.step_buttons['circle_detection'].config(bg='green')
+            self.error_flags['center_found'] = True
+        else:
+            x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
+            self.canvas.move(items[0], x - self.x, y - self.y)
+            self.x, self.y = x, y
 
     # Specific crop methods for Analog Calibration
     def set_crop_mode(self):
@@ -892,8 +1007,14 @@ class AnalogCalibrator(Calibrator):
         x_origin, y_origin = point_math.point_pos(self.x, self.y, self.r * r_param, 225)
         x, y = x_origin, y_origin
         x_diff, y_diff = x_origin + square_side, y_origin + square_side
-        self.apply_crop(x, y, x_diff, y_diff)
-        self.step_buttons['crop'].config(bg='green')
+        try:
+            self.apply_crop(x, y,
+                            x_diff,
+                            y_diff,
+                            keep_window=False)
+            self.step_buttons['crop'].config(bg='green')
+        except Exception as e:
+            typer.secho(str(e), fg='red')
 
     def reset_crop_detection(self,
                              min_r: int = 3,
@@ -912,10 +1033,12 @@ class AnalogCalibrator(Calibrator):
 
     # Circle Detection Methods
     def man_find_circles(self,
+                         event=None,
                          tweak: bool = False,
                          auto_crop: bool = False):
         """
         Manually detect circles with the current parameters
+        :param event:
         :param auto_crop:
         :param tweak:
         :return:
@@ -953,7 +1076,7 @@ class AnalogCalibrator(Calibrator):
             if tweak:
                 self.tweak_circle_params(min_r, max_r, auto_crop)
             self.canvas.create_circle(x, y, r, tag='gauge', width=3, outline='green')
-            self.canvas.create_circle(x, y, 5, fill='red', tag='center')
+            self.canvas.create_circle(x, y, 10, fill='red', tag='center')
             self.img_im = ie.cv_to_imagetk(self.img_cv)
             self.show_image()
             if not auto_crop:
@@ -1015,9 +1138,8 @@ class AnalogCalibrator(Calibrator):
                 mb.showerror('Error', message)
                 return
         self.error_flags['parameters_set'] = True
-        self.canvas.unbind('<Button-1>')
-        self.canvas.unbind('<Button-3>')
-        self.step_buttons['find_needle'].config(relief=tk.RAISED)
+        self.unbind_canvas_buttons()
+        self.buttons['find_needle'].config(relief=tk.RAISED)
         self.step_buttons['needle_detection'].config(bg='green')
         self.needle_rotation_scale.config(state=tk.NORMAL)
         self.find_needle_frame.destroy()
@@ -1029,11 +1151,12 @@ class AnalogCalibrator(Calibrator):
         :return: None
         """
         self.mask = np.zeros(self.img_cv.shape[:2], dtype=np.uint8)
-        cv2.line(self.mask,
-                 self.calibration['needle']['point1'],
-                 self.calibration['needle']['point2'],
-                 (255, 0, 0),
-                 thickness=self.calibration['needle']['width'])
+        for line in self.calibration['needle']['mask_lines']:
+            cv2.line(self.mask,
+                     line[0],
+                     line[1],
+                     (255, 0, 0),
+                     line[2])
         self.needle_image = cv2.bitwise_and(self.img_cv, self.img_cv, mask=self.mask)
         self.train_image = cv2.inpaint(self.img_cv, self.mask, 3, cv2.INPAINT_TELEA)
 
@@ -1192,6 +1315,8 @@ class AnalogCalibrator(Calibrator):
         Check if flag value is True, else prompt warning and return False.
         :return: True if error, False if no error
         """
+        if self.dev_flag:
+            return False
         if flag_name == 'cropped':
             message = 'Please crop the image first.'
         elif flag_name == 'perspective':
@@ -1226,9 +1351,10 @@ class AnalogCalibrator(Calibrator):
         self.calibration['needle_image'] = needle_path
         cv2.imwrite(needle_path, needle)
         self.set_calibration_parameters()
-        xml_file = os.path.join(self.directory, env.XML_FILE_NAME)
-        xmlr.dict_to_xml(self.calibration, xml_file, gauge=True)
-        typer.secho('Saved parameters to {}'.format(xml_file), fg='green')
+        path = "camera_{}_analog_gauge_{}".format(self.calibration['camera_id'], self.calibration['index'])
+        path = os.path.join(env.XML_FILES_PATH, path)
+        xmlr.dict_to_xml(self.calibration, path, gauge=True)
+        typer.secho('Saved parameters to {}'.format(path), fg='green')
 
     def run(self,
             index: int,
