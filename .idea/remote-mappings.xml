@@ -10,6 +10,7 @@
             </list>
           </settings>
         </remote-mappings>
+        <remote-mappings server-id="python@sftp://ubuntu@ec2-18-197-194-31.eu-central-1.compute.amazonaws.com:22/home/ubuntu/anaconda3/envs/image_ve/bin/python" />
       </list>
     </list>
   </component>

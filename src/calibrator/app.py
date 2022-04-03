@@ -1,4 +1,4 @@
-import cv2
+﻿import cv2
 import os
 import numpy as np
 import tkinter.ttk as ttk
@@ -66,7 +66,6 @@ class Calibrator:
         self.button_width = 18
         self.scroll_x = None
         self.scroll_y = None
-        self.zoom_scale = None
 
         # Menubar Frame
         self.menubar = tk.Menu(self.window)
@@ -144,16 +143,9 @@ class Calibrator:
         self.toolbar_frame.pack(side=tk.TOP, fill=tk.BOTH)
         tk.Button(self.toolbar_frame, text='Reset', command=self.load_image_from_file).pack(side=tk.LEFT)
         tk.Button(self.toolbar_frame, text='Edit', command=self.create_image_edit_frame).pack(side=tk.LEFT)
-        self.brush_size_bar = tk.Scale(self.toolbar_frame, from_=1, to=50, orient=tk.HORIZONTAL, label='Line width')
-        self.zoom_scale = tk.Scale(self.toolbar_frame,
-                                   from_=0.1, to=10,
-                                   orient=tk.HORIZONTAL,
-                                   label='Zoom',
-                                   resolution=0.1,
-                                   command=self.zoom)
+        self.brush_size_bar = tk.Scale(self.toolbar_frame, from_=1, to=100, orient=tk.HORIZONTAL, label='Line width')
         self.brush_size_bar.set(self.brush_size)
         self.brush_size_bar.pack(side=tk.RIGHT)
-        self.zoom_scale.pack(side=tk.RIGHT)
 
     def create_image_edit_frame(self):  # TODO: implement color options, perspective correction, etc.
         """
@@ -201,7 +193,7 @@ class Calibrator:
         Create the perspective frame for gauge calibration steps
         :return:
         """
-        if not self.error_flags['cropped']:
+        if not self.error_flags['cropped'] and not self.dev_flag:
             message = 'Please crop the image before setting the perspective'
             mb.showerror('Error', message)
             return
@@ -221,7 +213,6 @@ class Calibrator:
             self.perspective_bars[bar] = tk.Scale(self.top_frames['perspective'],
                                                   from_=-self.w,
                                                   to=self.w,
-                                                  command=self.bar_change_perspective,
                                                   orient=tk.HORIZONTAL,
                                                   label=bar)
             if bar in ['tl_x', 'tl_y', 'tr_y', 'bl_x']:
@@ -234,6 +225,10 @@ class Calibrator:
         tk.Button(self.top_frames['perspective'],
                   text='Reset Perspective',
                   command=self.reset_perspective).pack(side=tk.TOP)
+        for bar in self.perspective_bars.keys():
+            self.perspective_bars[bar].config(command=self.bar_change_perspective)
+        scales = [bar.get() for bar in self.perspective_bars.values()]
+        self.perspective.set_points(scales, order=False)
 
     def create_calibration_toolbar(self):
         """
@@ -399,15 +394,6 @@ class Calibrator:
         image = cv2.resize(image, (self.w, self.h), interpolation=cv2.INTER_AREA)
         return image
 
-    def zoom(self, val):
-        """
-
-        :return:
-        """
-        scale = float(val)
-        self.canvas.scale('all', 0, 0, scale, scale)
-        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
-
     def rotate_image(self, event):
         """
         Rotates the image according to the 'Rotate' scale in the image edit frame
@@ -535,6 +521,7 @@ class Calibrator:
                         resize=True,
                         keep_window=True)
         self.canvas.delete('perspective')
+        self.perspective
 
     def bar_change_perspective(self,
                                event: object = None):
@@ -1012,6 +999,7 @@ class AnalogCalibrator(Calibrator):
                             x_diff,
                             y_diff,
                             keep_window=False)
+            self.calibration['crop'] = (y, y_diff, x, x_diff)
             self.step_buttons['crop'].config(bg='green')
         except Exception as e:
             typer.secho(str(e), fg='red')
@@ -1307,6 +1295,7 @@ class AnalogCalibrator(Calibrator):
         self.calibration['radius'] = self.r
         self.calibration['width'] = self.w
         self.calibration['height'] = self.h
+        self.calibration['perspective_changed'] = self.perspective.changed
         self.calibration['perspective'] = self.perspective.points
 
     def flag_error_check(self,
@@ -1344,14 +1333,15 @@ class AnalogCalibrator(Calibrator):
         """
         train_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
         self.calibration['train_image'] = train_path
-        cv2.imwrite(train_path, self.train_image)
         needle = self.rotate_needle(angle=0,
                                     show=False)
+        cv2.imwrite(train_path, self.train_image)
         needle_path = os.path.join(self.directory, env.NEEDLE_IMAGE_NAME)
         self.calibration['needle_image'] = needle_path
+        self.calibration['step_value'] = self.value_step
         cv2.imwrite(needle_path, needle)
         self.set_calibration_parameters()
-        path = "camera_{}_analog_gauge_{}".format(self.calibration['camera_id'], self.calibration['index'])
+        path = "camera_{}_analog_gauge_{}.xml".format(self.calibration['camera_id'], self.calibration['index'])
         path = os.path.join(env.XML_FILES_PATH, path)
         xmlr.dict_to_xml(self.calibration, path, gauge=True)
         typer.secho('Saved parameters to {}'.format(path), fg='green')

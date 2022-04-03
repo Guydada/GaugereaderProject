@@ -6,13 +6,10 @@ import pandas as pd
 import numpy as np
 import skimage.io as io
 import PIL.Image as Image
-import PIL.ImageFilter as ImageFilter
 
 from torch.utils.data import Dataset
 
 import src.utils.image_editing as ie
-
-
 import src.utils.envconfig as env
 
 
@@ -31,6 +28,7 @@ class ImageDataset(Dataset):
         # Paths
         self.images_path = os.path.join(directory, set_type)
         self.gauge_directory = self.calibration['directory']
+        self.report_path = os.path.join(self.gauge_directory, f'{self.set_type}_df.csv')
 
     def initialize_dir(self):
         """
@@ -63,10 +61,8 @@ class AnalogDataSet(ImageDataset):
         self.base_image = base_image
         self.needle_image = needle_image
         self.angles = angles
-
         # Inner variables
-        # Data
-        self.data_cols = ['image_name', 'augmented', 'real_angle']
+        self.data_cols = ['image_name', 'augmented', 'real_angle', 'radians']
         center = self.calibration['center']
         self.center = tuple([float(x) for x in center])
         try:
@@ -83,12 +79,14 @@ class AnalogDataSet(ImageDataset):
         self.initialize_dir()
         for index, angle in enumerate(self.angles, start=1):
             image, _ = ie.rotate_needle(self.base_image, self.needle_image, self.center, angle)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image_pil = Image.fromarray(image)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             image_name = f'{index:05d}.jpg'
-            image_pil.save(os.path.join(self.images_path, image_name))
-            self.set_df = self.set_df.append(pd.DataFrame([[image_name, False, angle]], columns=self.data_cols))
-        self.set_df.to_csv(os.path.join(self.gauge_directory, f'{self.set_type}_df.csv'), index=False)
+            image = cv2.resize(image, env.TRAIN_IMAGE_SHAPE)
+            cv2.imwrite(os.path.join(self.images_path, image_name), image)
+            self.set_df = self.set_df.append(pd.DataFrame([[image_name, False, angle, angle]],
+                                                          columns=self.data_cols))
+        self.set_df['radians'] = self.set_df['radians'].apply(lambda x: np.radians(x))
+        self.set_df.to_csv(self.report_path, index=False)
         return self.set_df
 
     def __getitem__(self, index):
@@ -98,8 +96,7 @@ class AnalogDataSet(ImageDataset):
         image = Image.fromarray(image)
         if self.transform is not None:
             image = self.transform(image)
-        angle = self.angles[index]
-        return image, angle
+        return image, self.set_df.iloc[index]['radians']
 
     def __len__(self):
         return len(self.set_df)

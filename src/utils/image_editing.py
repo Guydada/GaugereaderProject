@@ -1,4 +1,5 @@
 import cv2
+import os
 from dataclasses import dataclass, asdict
 import numpy as np
 import PIL.Image as Image
@@ -86,9 +87,11 @@ def four_point_transform(image,
 
 def frame_to_read_image(frame,
                         crop_coords,
-                        perspective_pts):
+                        perspective_pts,
+                        perspective_changed: bool = False):
     """
     Convert a frame to a PIL image, crop it, and apply a perspective transform
+    :param perspective_changed:
     :param crop_coords:
     :param perspective_pts:
     :param frame:
@@ -96,20 +99,24 @@ def frame_to_read_image(frame,
     """
     y, y_diff, x, x_diff = crop_coords
     frame = frame[y:y + y_diff, x:x + x_diff]
-    frame = four_point_transform(frame, perspective_pts)
-    frame = cv2.resize(frame, env.TRAIN_IMAGE_SIZE)
-    return frame
+    if perspective_changed:
+        frame = four_point_transform(frame, perspective_pts)
+    if len(frame.shape) > 2:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    frame = cv2.resize(frame, env.TRAIN_IMAGE_SHAPE)
+    cv2.imwrite("edited_frame.png", frame)
+    frame = Image.fromarray(frame)
+    transform = tf.Compose([tf.ToTensor(), tf.Normalize(mean=[0.5], std=[0.5])])
+    frame = transform(frame)
+    return frame.unsqueeze(0).to(env.DEVICE)
 
 
 scale = list(np.linspace(0.81, 0.99, 10))
 
-process_image = tf.Compose([tf.Resize(env.TRAIN_IMAGE_SIZE),
-                            tf.Grayscale(num_output_channels=1),
-                            tf.ToTensor(),
+process_image = tf.Compose([tf.ToTensor(),
                             tf.Normalize(mean=[0.5], std=[0.5])])
 
 image_augmentor = tf.Compose([tf.RandomApply([tf.ColorJitter(0.1, 0.1, 0.1, 0.1)], p=0.5)])
-
 
 
 @dataclass
@@ -126,6 +133,7 @@ class Perspective:
     def __post_init__(self):
         self.point_names = list(self.asdict().keys())
         self.points = self.get_points()
+        self.changed = False
         self.draw = []
 
     def asdict(self):
@@ -155,6 +163,7 @@ class Perspective:
             else:
                 setattr(self, key, points[j][1])
         self.points = points
+        self.changed = True
 
     def reset(self,
               w: int,

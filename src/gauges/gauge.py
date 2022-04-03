@@ -1,7 +1,10 @@
 import os
 import numpy as np
 import cv2
+import typer
+import torch
 
+from datetime import datetime
 from torch.utils.data import DataLoader
 
 import src.model.dataset_class as img_dataset
@@ -21,10 +24,14 @@ class Gauge:
         if isinstance(calibration, dict):
             self.calibration = calibration
         elif isinstance(calibration, str):
-            self.calibration = xmlr.xml_to_dict(calibration)
+            path = os.path.join(env.XML_FILES_PATH, calibration)
+            self.calibration = xmlr.xml_to_dict(path)
             self.calibration = self.calibration['gauge']
         # Inner variables
         self.directory = self.calibration['directory']
+        if not os.path.exists(self.directory):
+            self.directory = env.get_directory(self.calibration['index'], self.calibration['camera_id'])
+            self.calibration['directory'] = self.directory
 
     def create_train_test_set(self,
                               train_size: float = 0.8,
@@ -33,9 +40,11 @@ class Gauge:
         pass
 
     def get_reading(self,
-                    frame):
+                    model,
+                    frame: str or np.ndarray):
         """
         Get the reading of the gauge.
+        :param model:
         :param frame:
         :return:
         """
@@ -116,23 +125,63 @@ class AnalogGauge(Gauge):
                                                      batch_size=env.BATCH_SIZE,
                                                      shuffle=False)
         model.to(env.DEVICE)
+        typer.secho(f'Training model on {env.DEVICE}, '
+                    f'Camera: {self.calibration["camera_id"]} '
+                    f'gauge: {self.calibration["index"]} ', fg=typer.colors.GREEN)
         model.train_sequence(train_loader=self.data_loaders['train'],
+                             test_loader=self.data_loaders['test'],
                              directory=self.directory)
-        model.test_sequence(test_loader=self.data_loaders['test'],
-                            directory=self.directory)
         return None
 
     def get_reading(self,
                     model,
-                    frame: np.array = None):
+                    frame: str or np.ndarray):
+        """
+        Get the reading of the gauge.
+        :param model:
+        :param frame:
+        :return:
+        """
+        if isinstance(frame, str):
+            path = os.path.join(env.FRAMES_PATH, frame)
+            frame = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+
         crop_coords = self.calibration['crop']
+        crop_coords = [int(x) for x in crop_coords]
         perspective_pts = self.calibration['perspective']
+        perspective_pts = [pts.strip('[').strip(']').split(',') for pts in perspective_pts]
+        perspective_pts = [tuple(int(x) for x in pts) for pts in perspective_pts]
+        perspective_changed = self.calibration['perspective_changed']
+        perspective_changed = True if perspective_changed == 'True' else False
         image = ie.frame_to_read_image(frame=frame,
                                        crop_coords=crop_coords,
-                                       perspective_pts=perspective_pts)
-        # get reading
-        reading = model(image)
+                                       perspective_pts=perspective_pts,
+                                       perspective_changed=perspective_changed)
+        rad = model(image)
+        reading = self.get_value(rad=rad)
+        time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        typer.secho('Gauge: {} | Camera: {} | Reading: {:.2f} {} | Time: {}'.format(self.calibration['index'],
+                                                                                    self.calibration['camera_id'],
+                                                                                    reading,
+                                                                                    self.calibration['units'],
+                                                                                    time), fg='green')
         return reading
+
+    def get_value(self,
+                  rad: torch.Tensor):
+        """
+        Converts angle to value
+        """
+        min_angle = float(self.calibration['needle']['min_angle'])
+        angle = np.rad2deg(rad.item())
+        if angle > 0:
+            min_rel_angle = min_angle - angle
+        else:
+            min_rel_angle = min_angle + abs(angle)
+        value_step = float(self.calibration['step_value'])
+        value = min_rel_angle * value_step
+        min_val = float(self.calibration['min_value'])
+        return min_val + value
 
     @classmethod
     def calibrate(cls,

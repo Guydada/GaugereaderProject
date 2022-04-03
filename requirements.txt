@@ -48,7 +48,7 @@ nest-asyncio @ file:///tmp/build/80754af9/nest-asyncio_1613680548246/work
 networkx @ file:///tmp/build/80754af9/networkx_1633639043937/work
 notebook @ file:///tmp/build/80754af9/notebook_1644985983866/work
 numexpr @ file:///tmp/build/80754af9/numexpr_1640686084435/work
-numpy==1.21.5
+numpy~=1.21.2
 olefile @ file:///home/conda/feedstock_root/build_artifacts/olefile_1602866521163/work
 packaging @ file:///tmp/build/80754af9/packaging_1637314298585/work
 pandas==1.3.4
@@ -93,7 +93,9 @@ widgetsnbextension @ file:///tmp/build/80754af9/widgetsnbextension_1645009354203
 xmltodict @ file:///Users/ktietz/demo/mc3/conda-bld/xmltodict_1629301980723/work
 zipp @ file:///opt/conda/conda-bld/zipp_1641824620731/work
 
-Pillow~=9.0.1
+Pillow~=8.0.0
 typer~=0.4.0
 xmltodict~=0.12.0
-matplotlib~=3.5.1
+matplotlib~=3.4.3
+scikit-learn~=0.24.2
+seaborn~=0.11.2
