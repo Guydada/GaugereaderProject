@@ -127,7 +127,7 @@ class AnalogGauge(Gauge):
         model.to(env.DEVICE)
         typer.secho(f'Training model on {env.DEVICE}, '
                     f'Camera: {self.calibration["camera_id"]} '
-                    f'gauge: {self.calibration["index"]} ', fg=typer.colors.GREEN)
+                    f'Gauge index: {self.calibration["index"]} ', fg=typer.colors.GREEN)
         model.train_sequence(train_loader=self.data_loaders['train'],
                              test_loader=self.data_loaders['test'],
                              directory=self.directory)
@@ -145,11 +145,11 @@ class AnalogGauge(Gauge):
         if isinstance(frame, str):
             path = os.path.join(env.FRAMES_PATH, frame)
             frame = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-
         crop_coords = self.calibration['crop']
         crop_coords = [int(x) for x in crop_coords]
         perspective_pts = self.calibration['perspective']
-        perspective_pts = [pts.strip('[').strip(']').split(',') for pts in perspective_pts]
+        if isinstance(perspective_pts[0], str):
+            perspective_pts = [pts.strip('[').strip(']').split(',') for pts in perspective_pts]
         perspective_pts = [tuple(int(x) for x in pts) for pts in perspective_pts]
         perspective_changed = self.calibration['perspective_changed']
         perspective_changed = True if perspective_changed == 'True' else False
@@ -160,11 +160,11 @@ class AnalogGauge(Gauge):
         rad = model(image)
         reading = self.get_value(rad=rad)
         time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        typer.secho('Gauge: {} | Camera: {} | Reading: {:.2f} {} | Time: {}'.format(self.calibration['index'],
+        typer.secho('Time: {} | Gauge: {} | Camera: {} | Reading: {:.2f} {}'.format(time,
+                                                                                    self.calibration['index'],
                                                                                     self.calibration['camera_id'],
                                                                                     reading,
-                                                                                    self.calibration['units'],
-                                                                                    time), fg='green')
+                                                                                    self.calibration['units']), fg='green')
         return reading
 
     def get_value(self,

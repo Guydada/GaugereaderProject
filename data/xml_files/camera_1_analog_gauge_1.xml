@@ -1,34 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gauge>
 	<needle>
-		<mask_lines>[(332, 96), (281, 161), 7]</mask_lines>
-		<mask_lines>[(333, 99), (284, 163), 7]</mask_lines>
-		<width>7</width>
-		<angle_deviation>37.3171</angle_deviation>
-		<max_angle>-114.1463</max_angle>
-		<min_angle>118.5366</min_angle>
+		<mask_lines>[(326, 849), (725, 777), 8]</mask_lines>
+		<mask_lines>[(324, 850), (732, 810), 8]</mask_lines>
+		<mask_lines>[(799, 765), (918, 702), 8]</mask_lines>
+		<mask_lines>[(922, 702), (951, 758), 8]</mask_lines>
+		<mask_lines>[(951, 758), (947, 825), 8]</mask_lines>
+		<mask_lines>[(947, 825), (811, 806), 8]</mask_lines>
+		<mask_lines>[(803, 770), (806, 802), 8]</mask_lines>
+		<mask_lines>[(804, 769), (813, 808), 8]</mask_lines>
+		<mask_lines>[(725, 781), (728, 809), 8]</mask_lines>
+		<mask_lines>[(719, 791), (397, 841), 18]</mask_lines>
+		<mask_lines>[(724, 798), (596, 817), 18]</mask_lines>
+		<mask_lines>[(722, 786), (704, 788), 18]</mask_lines>
+		<mask_lines>[(819, 791), (947, 801), 40]</mask_lines>
+		<mask_lines>[(949, 767), (803, 783), 40]</mask_lines>
+		<mask_lines>[(812, 768), (928, 725), 40]</mask_lines>
+		<mask_lines>[(935, 739), (903, 752), 40]</mask_lines>
+		<mask_lines>[(937, 752), (901, 713), 40]</mask_lines>
+		<width>40</width>
+		<angle_deviation>-94.3902</angle_deviation>
+		<max_angle>-136.0976</max_angle>
+		<min_angle>131.7073</min_angle>
 	</needle>
 	<directory>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_1</directory>
 	<index>1</index>
 	<camera_id>1</camera_id>
-	<crop>394</crop>
-	<crop>1401</crop>
-	<crop>81</crop>
-	<crop>1088</crop>
-	<min_value>-7.0</min_value>
-	<max_value>30.0</max_value>
-	<units>Knots</units>
+	<crop>522</crop>
+	<crop>805</crop>
+	<crop>594</crop>
+	<crop>877</crop>
+	<min_value>-1.0</min_value>
+	<max_value>5.0</max_value>
+	<units>Bar</units>
 	<train_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_1/train_image.jpg</train_image>
 	<needle_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_1/needle_image.jpg</needle_image>
-	<step_value>0.15901469338743843</step_value>
-	<center>237</center>
-	<center>214</center>
-	<radius>68</radius>
-	<width>500</width>
-	<height>500</height>
+	<step_value>0.022404369748275706</step_value>
+	<center>766</center>
+	<center>790</center>
+	<radius>276</radius>
+	<width>1500</width>
+	<height>1500</height>
 	<perspective_changed>true</perspective_changed>
 	<perspective>[0, 0]</perspective>
-	<perspective>[500, 0]</perspective>
-	<perspective>[500, 500]</perspective>
-	<perspective>[0, 500]</perspective>
+	<perspective>[1500, 0]</perspective>
+	<perspective>[1500, 1500]</perspective>
+	<perspective>[0, 1500]</perspective>
 </gauge>

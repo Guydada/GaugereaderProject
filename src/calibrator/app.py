@@ -202,7 +202,7 @@ class Calibrator:
         self.backup_cv = self.img_cv.copy()
         self.top_frames['perspective'] = tk.Toplevel(self.window,
                                                      name='perspective',
-                                                     width=200,
+                                                     width=300,
                                                      height=200)
         self.top_frames['perspective'].title('Set Perspective')
         self.perspective.reset(self.w)
@@ -211,8 +211,9 @@ class Calibrator:
                   command=self.use_set_perspective_points).pack(side=tk.TOP)
         for bar in self.perspective_bars.keys():
             self.perspective_bars[bar] = tk.Scale(self.top_frames['perspective'],
-                                                  from_=-self.w,
-                                                  to=self.w,
+                                                  from_=2 * -self.w,
+                                                  to=2 * self.w,
+                                                  length=self.w/4,
                                                   orient=tk.HORIZONTAL,
                                                   label=bar)
             if bar in ['tl_x', 'tl_y', 'tr_y', 'bl_x']:
@@ -296,12 +297,10 @@ class Calibrator:
 
     # Image loading methods
     def load_image_from_file(self,
-                             resize: bool = True,
                              path: str = None,
                              prompt: bool = False):
         """
         Load an image from a file
-        :param resize:
         :param path:
         :param prompt: If true, prompt the user a warning for resetting the image
         :return:
@@ -312,12 +311,12 @@ class Calibrator:
         self.img_cv = cv2.imread(self.calibration_image_path)
         if self.img_cv is None:
             raise Exception("Image not found / not readable")
-        self.update_main_image(self.img_cv, resize=resize)
+        self.update_main_image(self.img_cv, resize=True)
 
     def update_main_image(self,
                           image=None,
                           keep_window: bool = False,
-                          resize: bool = True):
+                          resize: bool = False):
         """
         Updates the main image of the calibrator. This will also update the canvas and the image frame,
         and the relevant size variables.
@@ -353,8 +352,7 @@ class Calibrator:
         self.window.title(f'{file_name} - Calibrator App')
 
     def change_calibration_image(self,
-                                 prompt: bool = True,
-                                 resize: bool = True):
+                                 prompt: bool = True):
         """
         Opens the image from the file dialog. This will change the original calibration image.
         :param resize:
@@ -373,7 +371,7 @@ class Calibrator:
         if isinstance(self.calibration_image_path, tuple):
             return None
         self.calibration_image = os.path.basename(self.calibration_image_path)
-        self.load_image_from_file(resize=resize)
+        self.load_image_from_file()
         return self.calibration_image_path
 
     def resize_cv(self,
@@ -383,15 +381,7 @@ class Calibrator:
         :param image: cv2 image (ndarray)
         :return: resized cv2 image (ndarray)
         """
-        h = image.shape[0]
-        w = image.shape[1]
-        if h < w:
-            factor = w
-        else:
-            factor = h
-        self.w = int(w * env.WINDOW_SIZE[0] / factor)
-        self.h = int(h * env.WINDOW_SIZE[1] / factor)
-        image = cv2.resize(image, (self.w, self.h), interpolation=cv2.INTER_AREA)
+        image, self.h, self.w = ie.factor_resize(image)
         return image
 
     def rotate_image(self, event):
@@ -518,10 +508,9 @@ class Calibrator:
         self.apply_crop(0, 0,
                         self.img_cv.shape[1],
                         self.img_cv.shape[0],
-                        resize=True,
+                        resize=False,
                         keep_window=True)
         self.canvas.delete('perspective')
-        self.perspective
 
     def bar_change_perspective(self,
                                event: object = None):
@@ -570,7 +559,6 @@ class Calibrator:
         This function is called when the user clicks on the crop button.
         :return:
         """
-        self.load_image_from_file(resize=True)
         self.canvas.delete('crop')
         self.draw_params = dict(tag='crop', outline='black')
         self.step_buttons['crop'].config(relief='sunken')
@@ -613,14 +601,9 @@ class Calibrator:
         :return: None
         """
         cropped_image = self.img_cv[y:y_diff, x:x_diff]
-        try:
-            cropped_image = cv2.resize(cropped_image, env.EDIT_IMAGE_SIZE)
-        except cv2.error:
-            raise Exception('Auto crop failed, please crop manually')
         self.img_cv = cropped_image
         self.update_main_image(keep_window=keep_window,
                                resize=resize)
-        # get file name from path
         self.step_buttons['crop'].config(relief='raised')
         self.error_flags['cropped'] = True
 
@@ -719,9 +702,6 @@ class AnalogCalibrator(Calibrator):
         self.x = 0  # Gauge center x
         self.y = 0  # Gauge center y
         self.r = 0  # Gauge radius
-        self.crop_detection = {'min_r': 0,  # parameters for auto crop detection
-                               'max_r': 0,
-                               'min_d': 0}
         self.zero_angle = 0
         self.angle_deviation = 0
         self.value_diff = 0
@@ -739,9 +719,6 @@ class AnalogCalibrator(Calibrator):
         for flag in flags:
             self.error_flags[flag] = False
 
-        # Crop Control Tools - GUI
-        self.crop_mode = tk.StringVar(self.window)
-
         # Find Needle Frame (finding the needle and the calibration circle)
         self.find_needle_frame = None
         self.text_params = {'min_value': 0,
@@ -757,21 +734,7 @@ class AnalogCalibrator(Calibrator):
         self.add_calibration_toolbar_frame()
 
         # Add gauge steps
-        self.add_toolbar_buttons()
         self.add_gauge_steps_frame()
-
-    # Specific Frames and Widgets for Analog Calibration
-    def add_toolbar_buttons(self):
-        """
-        Add the buttons to the toolbar specific to the analog calibrator
-        :return:
-        """
-        crop_options = ['Auto Crop', 'Manual Crop']
-        self.crop_mode.set(crop_options[0])
-        self.buttons['crop_options'] = tk.OptionMenu(self.toolbar_frame,
-                                                     self.crop_mode,
-                                                     *crop_options)
-        self.buttons['crop_options'].pack(side=tk.LEFT)
 
     def add_gauge_steps_frame(self):
         """
@@ -779,7 +742,7 @@ class AnalogCalibrator(Calibrator):
         :return:
         """
         self.button_width = 18
-        self.step_buttons['crop'].config(command=self.set_crop_mode)
+        self.step_buttons['crop'].config(command=self.use_crop)
         self.step_buttons['circle_detection'] = tk.Button(self.gauge_steps_frame,
                                                           text='Circle Detection',
                                                           width=self.button_width,
@@ -964,85 +927,30 @@ class AnalogCalibrator(Calibrator):
             self.x, self.y = x, y
             tk.Canvas.create_circle = ie.create_circle
             self.canvas.create_circle(self.x, self.y, 10, fill='red', tag='center')
-            self.step_buttons['circle_detection'].config(bg='green')
-            self.error_flags['center_found'] = True
+
         else:
             x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
             self.canvas.move(items[0], x - self.x, y - self.y)
             self.x, self.y = x, y
-
-    # Specific crop methods for Analog Calibration
-    def set_crop_mode(self):
-        """
-        Change auto/manual crop
-        :return:
-        """
-        if self.crop_mode.get() == 'Auto Crop':
-            self.auto_circle_crop()
-        elif self.crop_mode.get() == 'Manual Crop':
-            self.use_crop()
-
-    def auto_circle_crop(self):
-        """
-        Automatically crop the image from a circle
-        :return:
-        """
-        self.reset_crop_detection()
-        self.auto_find_circles(auto_crop=True)
-        r_param = 1.5  # arbitrary value that by trial and error seems to work
-        square_side = int(self.r * 2.2)
-        x_origin, y_origin = point_math.point_pos(self.x, self.y, self.r * r_param, 225)
-        x, y = x_origin, y_origin
-        x_diff, y_diff = x_origin + square_side, y_origin + square_side
-        try:
-            self.apply_crop(x, y,
-                            x_diff,
-                            y_diff,
-                            keep_window=False)
-            self.calibration['crop'] = (y, y_diff, x, x_diff)
-            self.step_buttons['crop'].config(bg='green')
-        except Exception as e:
-            typer.secho(str(e), fg='red')
-
-    def reset_crop_detection(self,
-                             min_r: int = 3,
-                             max_r: int = 2,
-                             min_d: int = 3):
-        """
-        Reset the crop detection parameters
-        :param min_r: minimum radius
-        :param max_r: maximum radius
-        :param min_d: minimum distance
-        :return: None
-        """
-        self.crop_detection['min_r'] = self.w // min_r
-        self.crop_detection['max_r'] = self.w // 3
-        self.crop_detection['min_d'] = self.w // min_d
+        self.step_buttons['circle_detection'].config(bg='green')
+        self.error_flags['center_found'] = True
 
     # Circle Detection Methods
     def man_find_circles(self,
                          event=None,
-                         tweak: bool = False,
-                         auto_crop: bool = False):
+                         tweak: bool = False):
         """
         Manually detect circles with the current parameters
         :param event:
-        :param auto_crop:
         :param tweak:
         :return:
         """
         tk.Canvas.create_circle = ie.create_circle
         for tag in ['center', 'gauge', 'no_circles']:
             self.canvas.delete(tag)
-        if auto_crop:
-            min_r = self.crop_detection['min_r']
-            max_r = self.crop_detection['max_r']
-            min_d = self.crop_detection['min_d']
-        else:
-            min_r = self.circle_detection_scales['min_r'].get()
-            max_r = self.circle_detection_scales['max_r'].get()
-            min_d = self.circle_detection_scales['min_d'].get()
-
+        min_r = self.circle_detection_scales['min_r'].get()
+        max_r = self.circle_detection_scales['max_r'].get()
+        min_d = self.circle_detection_scales['min_d'].get()
         circles = cd.find_circles(self.img_cv,
                                   min_r,
                                   max_r,
@@ -1055,44 +963,40 @@ class AnalogCalibrator(Calibrator):
                                     tag='no_circles')
             self.step_buttons['circle_detection'].config(bg='red')
             if tweak:
-                self.tweak_circle_params(min_r, max_r, auto_crop)
+                self.tweak_circle_params(min_r, max_r)
             return False
         else:
             x, y, r = circles
             self.x, self.y, self.r = x, y, r
+            self.step_buttons['circle_detection'].config(bg='green')
             self.error_flags['circles'] = True
             if tweak:
-                self.tweak_circle_params(min_r, max_r, auto_crop)
+                self.tweak_circle_params(min_r, max_r)
             self.canvas.create_circle(x, y, r, tag='gauge', width=3, outline='green')
             self.canvas.create_circle(x, y, 10, fill='red', tag='center')
             self.img_im = ie.cv_to_imagetk(self.img_cv)
             self.show_image()
-            if not auto_crop:
-                self.step_buttons['circle_detection'].config(bg='green')
             return x, y, r
 
     def tweak_circle_params(self,
                             min_r,
-                            max_r,
-                            auto_crop: bool = False):
+                            max_r):
+        """
+        Tweak the circle detection parameters to find the gauge center
+        :param min_r:
+        :param max_r:
+        :return:
+        """
         if min_r < self.img_cv.shape[0] / 2:
-            if auto_crop:
-                self.crop_detection['min_r'] = min_r + 1
-            else:
-                if self.circle_detection_scales['min_r'] is not None:
-                    self.circle_detection_scales['min_r'].set(min_r + 1)
+            if self.circle_detection_scales['min_r'] is not None:
+                self.circle_detection_scales['min_r'].set(min_r + 1)
         if max_r > 1:
-            if auto_crop:
-                self.crop_detection['max_r'] = max_r - 1
-            else:
-                if self.circle_detection_scales['max_r'] is not None:
-                    self.circle_detection_scales['max_r'].set(max_r + 1)
+            if self.circle_detection_scales['max_r'] is not None:
+                self.circle_detection_scales['max_r'].set(max_r + 1)
 
-    def auto_find_circles(self,
-                          auto_crop: bool = False):
+    def auto_find_circles(self):
         """
         Apply circle detection Automatically
-        :param auto_crop:
         :return: None
         """
         circles = False
@@ -1101,8 +1005,7 @@ class AnalogCalibrator(Calibrator):
         while not circles:
             if time.time() > timeout:
                 break
-            circles = self.man_find_circles(auto_crop=auto_crop,
-                                            tweak=True)
+            circles = self.man_find_circles(tweak=True)
         if circles:
             self.x, self.y, self.r = circles
 

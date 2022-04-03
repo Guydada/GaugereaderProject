@@ -10,6 +10,24 @@ import src.utils.envconfig as env
 import src.utils.point_math as pm
 
 
+def factor_resize(image: np.ndarray):
+    """
+    Resize an image to a new height and width.
+    :param image:
+    :return:
+    """
+    h = image.shape[0]
+    w = image.shape[1]
+    if h < w:
+        factor = w
+    else:
+        factor = h
+    w = int(w * env.WINDOW_SIZE[0] / factor)
+    h = int(h * env.WINDOW_SIZE[1] / factor)
+    image = cv2.resize(image, (w, h), interpolation=cv2.INTER_AREA)
+    return image, h, w
+
+
 def cv_to_imagetk(image):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = Image.fromarray(image)
@@ -97,8 +115,10 @@ def frame_to_read_image(frame,
     :param frame:
     :return:
     """
+    frame, _x, _y = factor_resize(frame)
     y, y_diff, x, x_diff = crop_coords
-    frame = frame[y:y + y_diff, x:x + x_diff]
+    frame = frame[y:y_diff, x:x_diff]
+    frame, _x, _y = factor_resize(frame)
     if perspective_changed:
         frame = four_point_transform(frame, perspective_pts)
     if len(frame.shape) > 2:
