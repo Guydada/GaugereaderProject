@@ -1,6 +1,5 @@
 import src.model.gauge_net as gn
 import src.gauges.gauge as g
-import cv2
 
 model = gn.GaugeNet.load()
 

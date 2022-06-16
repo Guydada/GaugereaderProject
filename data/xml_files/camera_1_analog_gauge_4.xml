@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gauge>
+	<needle>
+		<mask_lines>[(370, 1115), (689, 818), 14]</mask_lines>
+		<mask_lines>[(379, 1112), (707, 840), 14]</mask_lines>
+		<mask_lines>[(701, 834), (506, 998), 14]</mask_lines>
+		<mask_lines>[(574, 930), (695, 829), 14]</mask_lines>
+		<mask_lines>[(840, 615), (772, 750), 34]</mask_lines>
+		<mask_lines>[(784, 760), (935, 702), 34]</mask_lines>
+		<mask_lines>[(936, 704), (833, 610), 34]</mask_lines>
+		<mask_lines>[(849, 630), (802, 738), 34]</mask_lines>
+		<mask_lines>[(801, 743), (906, 683), 34]</mask_lines>
+		<mask_lines>[(894, 666), (805, 712), 34]</mask_lines>
+		<mask_lines>[(858, 653), (841, 685), 34]</mask_lines>
+		<width>34</width>
+		<angle_deviation>-133.9024</angle_deviation>
+		<max_angle>-129.5122</max_angle>
+		<min_angle>136.0976</min_angle>
+	</needle>
+	<directory>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_4</directory>
+	<index>4</index>
+	<camera_id>1</camera_id>
+	<crop>547</crop>
+	<crop>792</crop>
+	<crop>922</crop>
+	<crop>1167</crop>
+	<min_value>0.0</min_value>
+	<max_value>25.0</max_value>
+	<units>Bar</units>
+	<train_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_4/train_image.jpg</train_image>
+	<needle_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_4/needle_image.jpg</needle_image>
+	<step_value>0.09412303311097708</step_value>
+	<center>738</center>
+	<center>794</center>
+	<radius>255</radius>
+	<width>1500</width>
+	<height>1500</height>
+	<perspective_changed>true</perspective_changed>
+	<perspective>[9, -26]</perspective>
+	<perspective>[1500, 0]</perspective>
+	<perspective>[1500, 1500]</perspective>
+	<perspective>[0, 1500]</perspective>
+</gauge>
