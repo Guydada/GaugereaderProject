@@ -108,7 +108,9 @@ class GaugeNet(nn.Module):
                 loss = self.criterion(output, target.reshape([env.BATCH_SIZE, 1]).float())
                 if report:
                     df = np.stack([target.cpu().numpy(), output.squeeze().cpu().numpy()], axis=1)
-                    test_report = test_report.append(pd.DataFrame(df, columns=['real_angle', 'predicted_angle']))
+                    test_report = pd.concat([test_report,
+                                            pd.DataFrame(df,
+                                                         columns=['real_angle', 'predicted_angle'])])
         if report:
             path = os.path.join(directory, 'test_report.csv')
             test_report.to_csv(path, index=False)

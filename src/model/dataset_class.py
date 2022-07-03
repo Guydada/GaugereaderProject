@@ -83,8 +83,9 @@ class AnalogDataSet(ImageDataset):
             image_name = f'{index:05d}.jpg'
             image = cv2.resize(image, env.TRAIN_IMAGE_SHAPE)
             cv2.imwrite(os.path.join(self.images_path, image_name), image)
-            self.set_df = self.set_df.append(pd.DataFrame([[image_name, False, angle, angle]],
-                                                          columns=self.data_cols))
+            self.set_df = pd.concat([self.set_df,
+                                     pd.DataFrame([[image_name, False, angle, angle]],
+                                                  columns=self.data_cols)])
         self.set_df['radians'] = self.set_df['radians'].apply(lambda x: np.radians(x))
         self.set_df.to_csv(self.report_path, index=False)
         return self.set_df
