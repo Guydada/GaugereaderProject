@@ -10,7 +10,7 @@ import PIL.Image as Image
 from torch.utils.data import Dataset
 
 import src.utils.image_editing as ie
-import src.utils.envconfig as env
+from config import settings
 
 
 class ImageDataset(Dataset):
@@ -81,7 +81,7 @@ class AnalogDataSet(ImageDataset):
             image, _ = ie.rotate_needle(self.base_image, self.needle_image, self.center, angle)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             image_name = f'{index:05d}.jpg'
-            image = cv2.resize(image, env.TRAIN_IMAGE_SHAPE)
+            image = cv2.resize(image, settings.TRAIN_IMAGE_SHAPE)
             cv2.imwrite(os.path.join(self.images_path, image_name), image)
             self.set_df = pd.concat([self.set_df,
                                      pd.DataFrame([[image_name, False, angle, angle]],

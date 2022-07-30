@@ -1,22 +1,28 @@
 import os
-import numpy as np
 import cv2
 import typer
 import torch
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 from datetime import datetime
 from torch.utils.data import DataLoader
 
 import src.model.dataset_class as img_dataset
+import src.model.gauge_net as gn
 import src.calibrator.app as calibrator
 import src.utils.convert_xml as xmlr
-import src.utils.envconfig as env
 import src.utils.image_editing as ie
+import src.utils.envconfig as env
+
+from config import settings
 
 
 class Gauge:
     def __init__(self,
-                 calibration: dict or str = None):
+                 calibration: dict or str = None,
+                 transfer_learning: bool = False):
         """
         Initialize the gauge.
         :param calibration: Calibration dictionary or path to the calibration xml file.
@@ -24,7 +30,7 @@ class Gauge:
         if isinstance(calibration, dict):
             self.calibration = calibration
         elif isinstance(calibration, str):
-            path = os.path.join(env.XML_FILES_PATH, calibration)
+            path = os.path.join(settings.XML_FILES_PATH, calibration)
             self.calibration = xmlr.xml_to_dict(path)
             self.calibration = self.calibration['gauge']
         # Inner variables
@@ -32,11 +38,22 @@ class Gauge:
         if not os.path.exists(self.directory):
             self.directory = env.get_directory(self.calibration['index'], self.calibration['camera_id'])
             self.calibration['directory'] = self.directory
+        self.transfer_learning = transfer_learning
 
-    def create_train_test_set(self,
-                              train_size: float = 0.8,
-                              test_size: float = 0.2,
-                              random_state: int = 42):
+    def train(self):
+        """
+        Train the model.
+        """
+        pass
+
+    def create_train_val_set(self):
+        pass
+
+    def visual_test(self,
+                    model):
+        """
+        Test the model's performance.
+        """
         pass
 
     def get_reading(self,
@@ -70,10 +87,8 @@ class AnalogGauge(Gauge):
                  calibration: dict or str = None):
         super().__init__(calibration=calibration)
         # Train/test set directories
-        self.train_set_images_dir = os.path.join(self.directory, 'train')
-        self.test_set_images_dir = os.path.join(self.directory, 'test')
-        self.train_image_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
-        self.needle_image_path = os.path.join(self.directory, env.NEEDLE_IMAGE_NAME)
+        self.train_image_path = os.path.join(self.directory, settings.TRAIN_IMAGE_NAME)
+        self.needle_image_path = os.path.join(self.directory, settings.NEEDLE_IMAGE_NAME)
 
         # Train/test base images
         self.base_image = cv2.imread(self.train_image_path)
@@ -90,19 +105,37 @@ class AnalogGauge(Gauge):
         self.datasets = self.init_datasets()
 
         # data_loaders
-        self.data_loaders = dict().fromkeys(['train', 'test'])
+        self.data_loaders = dict().fromkeys(['train', 'val', 'test'])
+
+        # Model
+        try:
+            self.model = gn.GaugeNet.load(directory=self.directory)
+        except FileNotFoundError:
+            if settings.DEV == 'True':
+                confirm = True
+            else:
+                confirm = typer.confirm(
+                    f'Start training for this gauge (either transfer learning or learning from scratch)?',
+                    default=True,
+                    abort=True)
+
+            if confirm:
+                self.model = gn.GaugeNet(directory=self.directory)
+                self.train(transfer_learning=False)
 
     def init_angles(self):
         min_angle = float(self.calibration['needle']['min_angle'])
         max_angle = float(self.calibration['needle']['max_angle'])
-        train_angles = np.linspace(min_angle, max_angle, env.IMAGE_TRAIN_SET_SIZE)
-        test_angles = np.random.uniform(min_angle, max_angle, env.IMAGE_TEST_SET_SIZE)
-        angles = {'train': train_angles, 'test': test_angles}
+        train_angles = np.linspace(min_angle, max_angle, settings.IMAGE_TRAIN_SET_SIZE)
+        val_angles = np.random.uniform(min_angle, max_angle, settings.IMAGE_VAL_SET_SIZE)
+        test_angles = np.random.uniform(min_angle, max_angle, settings.IMAGE_TEST_SET_SIZE)
+        angles = {'train': train_angles, 'val': val_angles, 'test': test_angles}
         return angles
 
-    def init_datasets(self):
+    def init_datasets(self,
+                      sets: list = ('train', 'val', 'test')):
         datasets = {}
-        for set_type in ['train', 'test']:
+        for set_type in sets:
             datasets[set_type] = img_dataset.AnalogDataSet(set_type=set_type,
                                                            base_image=self.base_image,
                                                            needle_image=self.needle_image,
@@ -110,61 +143,105 @@ class AnalogGauge(Gauge):
                                                            calibration=self.calibration)
         return datasets
 
-    def create_train_test_set(self,
-                              train_size: float = 0.8,
-                              test_size: float = 0.2,
-                              random_state: int = 42):
-        for set_type in ['train', 'test']:
+    def create_train_val_set(self):
+        for set_type in ['train', 'val', 'test']:
             self.datasets[set_type].create_dataset()
         return None
 
-    def train(self,
-              model):
-        for set_type in ['train', 'test']:
+    def init_data_loaders(self,
+                          sets: list = ('train', 'val', 'test')):
+        for set_type in sets:
             self.data_loaders[set_type] = DataLoader(self.datasets[set_type],
-                                                     batch_size=env.BATCH_SIZE,
+                                                     batch_size=settings.BATCH_SIZE,
                                                      shuffle=False)
-        model.to(env.DEVICE)
-        typer.secho(f'Training model on {env.DEVICE}, '
+
+    def train(self,
+              transfer_learning: bool = False):
+        self.init_data_loaders(sets=['train', 'val', 'test'])
+        self.model.to(settings.DEVICE)
+        typer.secho(f'Training model on {settings.DEVICE}, '
                     f'Camera: {self.calibration["camera_id"]} '
                     f'Gauge index: {self.calibration["index"]} ', fg=typer.colors.GREEN)
-        model.train_sequence(train_loader=self.data_loaders['train'],
-                             test_loader=self.data_loaders['test'],
-                             directory=self.directory)
+        self.model.train_sequence(train_loader=self.data_loaders['train'],
+                                  val_loader=self.data_loaders['val'],
+                                  test_loader=self.data_loaders['test'],
+                                  transfer_learning=transfer_learning)
         return None
+
+    def visual_test(self,
+                    model: gn.GaugeNet = None):
+        """
+        Test the model's performance.
+        """
+        if model is None:
+            model = self.model
+        test_path = os.path.join(self.directory, 'test')
+        test_images = [os.path.join(test_path, x) for x in os.listdir(test_path)]
+        size = settings.TEST_REPORT_IMAGE_TILE
+        fig_shape = [size] * 2
+        fig_size = [settings.REPORT_PLT_SIZE] * 2
+        fig = plt.figure(figsize=fig_size)
+        for i, image in enumerate(start=1, iterable=test_images):
+            if i > size * size:
+                break
+            pred_value = self.get_reading(model=model,
+                                          frame=image,
+                                          restore_edit_steps=False,
+                                          prints=False)
+            fig.add_subplot(fig_shape[0], fig_shape[1], i)
+            figure = cv2.imread(image)
+            plt.imshow(figure)
+            plt.axis('off')
+            pred_value = round(pred_value, 2)
+            plt.title(f'Predicted Value: \n {pred_value} {self.calibration["units"]}')
+        fig.suptitle(f'Camera: {self.calibration["camera_id"]} Gauge: {self.calibration["index"]} Test Results',
+                     fontsize=24)
+        # enlarge spacing between subplots
+        fig.subplots_adjust(hspace=0.5)
+        fig.savefig(os.path.join(self.directory, settings.REPORT_PLT_NAME))
 
     def get_reading(self,
                     model,
-                    frame: str or np.ndarray):
+                    frame: str or np.ndarray,
+                    restore_edit_steps: bool = True,
+                    prints: bool = True):
         """
         Get the reading of the gauge.
         :param model:
         :param frame:
+        :param restore_edit_steps: Perform the edit steps as saved in the XML file
+        :param prints: Print the results
         :return:
         """
+        crop_coords = None
+        perspective_pts = None
+        perspective_changed = False
         if isinstance(frame, str):
-            path = os.path.join(env.FRAMES_PATH, frame)
+            path = os.path.join(settings.FRAMES_PATH, frame)
             frame = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-        crop_coords = self.calibration['crop']
-        crop_coords = [int(x) for x in crop_coords]
-        perspective_pts = self.calibration['perspective']
-        if isinstance(perspective_pts[0], str):
-            perspective_pts = [pts.strip('[').strip(']').split(',') for pts in perspective_pts]
-        perspective_pts = [tuple(int(x) for x in pts) for pts in perspective_pts]
-        perspective_changed = self.calibration['perspective_changed']
-        perspective_changed = True if perspective_changed == 'True' else False
+        if restore_edit_steps:
+            crop_coords = self.calibration['crop']
+            crop_coords = [int(x) for x in crop_coords]
+            perspective_pts = self.calibration['perspective']
+            if isinstance(perspective_pts[0], str):
+                perspective_pts = [pts.strip('[').strip(']').split(',') for pts in perspective_pts]
+            perspective_pts = [tuple(int(x) for x in pts) for pts in perspective_pts]
+            perspective_changed = self.calibration['perspective_changed']
+            perspective_changed = True if perspective_changed == 'True' else False
         image = ie.frame_to_read_image(frame=frame,
                                        crop_coords=crop_coords,
                                        perspective_pts=perspective_pts,
                                        perspective_changed=perspective_changed)
         rad = model(image)
         reading = self.get_value(rad=rad)
-        time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        typer.secho('Time: {} | Gauge: {} | Camera: {} | Reading: {:.2f} {}'.format(time,
-                                                                                    self.calibration['index'],
-                                                                                    self.calibration['camera_id'],
-                                                                                    reading,
-                                                                                    self.calibration['units']), fg='green')
+        if prints:
+            time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            typer.secho('Time: {} | Gauge: {} | Camera: {} | Reading: {:.2f} {}'.format(time,
+                                                                                        self.calibration['index'],
+                                                                                        self.calibration['camera_id'],
+                                                                                        reading,
+                                                                                        self.calibration['units']),
+                        fg='green')
         return reading
 
     def get_value(self,

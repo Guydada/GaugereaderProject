@@ -1,3 +1,6 @@
 /notebooks/
 /src/archive-calibrator/
 /src/calibration_data/
+
+# Ignore dynaconf secret files
+.secrets.*

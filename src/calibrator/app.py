@@ -11,10 +11,10 @@ import time
 import typer
 
 import src.utils.image_editing as ie
-import src.utils.point_math as point_math
 import src.utils.circle_dectection as cd
-import src.utils.envconfig as env
 import src.utils.convert_xml as xmlr
+
+from config import settings
 
 dev_flag = True
 
@@ -26,7 +26,7 @@ class Calibrator:
         Alone it does not do anything, uses as an archi-class for the AnalogCalibrator and the DigitalCalibrator.
         """
         # dev flag (no errors) # TODO: remove this
-        self.dev_flag = dev_flag
+        self.dev_flag = True if settings.DEV == 'True' else False
         self.calibration = {}
         self.calibration_image = None
 
@@ -78,7 +78,7 @@ class Calibrator:
         self.create_toolbar_frame()
 
         # Image Frame settings
-        self.image_frame = tk.Frame(master=self.window, width=env.WINDOW_SIZE[0], height=env.WINDOW_SIZE[1])
+        self.image_frame = tk.Frame(master=self.window, width=settings.WINDOW_SIZE[0], height=settings.WINDOW_SIZE[1])
         self.image_frame.configure(background='gray')
 
         # Image editing frame
@@ -213,7 +213,7 @@ class Calibrator:
             self.perspective_bars[bar] = tk.Scale(self.top_frames['perspective'],
                                                   from_=2 * -self.w,
                                                   to=2 * self.w,
-                                                  length=self.w/4,
+                                                  length=self.w / 4,
                                                   orient=tk.HORIZONTAL,
                                                   label=bar)
             if bar in ['tl_x', 'tl_y', 'tr_y', 'bl_x']:
@@ -237,8 +237,8 @@ class Calibrator:
         :return:
         """
         self.calibration_toolbar = tk.Frame(self.window,
-                                            width=env.WINDOW_SIZE[0],
-                                            height=env.WINDOW_SIZE[1])
+                                            width=settings.WINDOW_SIZE[0],
+                                            height=settings.WINDOW_SIZE[1])
         self.calibration_toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH)
 
     def create_canvas(self,
@@ -363,7 +363,7 @@ class Calibrator:
             tk.messagebox.showwarning('Warning',
                                       'This will reset all calibration data and replace calibration image path')
         try:
-            self.calibration_image_path = fd.askopenfilename(initialdir=env.FRAMES_PATH,
+            self.calibration_image_path = fd.askopenfilename(initialdir=settings.FRAMES_PATH,
                                                              title="Select Calibration Image",
                                                              filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*")))
         except TypeError:
@@ -1234,18 +1234,18 @@ class AnalogCalibrator(Calibrator):
         Save to XML the calibration data, write train and needle images
         :return:
         """
-        train_path = os.path.join(self.directory, env.TRAIN_IMAGE_NAME)
+        train_path = os.path.join(self.directory, settings.TRAIN_IMAGE_NAME)
         self.calibration['train_image'] = train_path
         needle = self.rotate_needle(angle=0,
                                     show=False)
         cv2.imwrite(train_path, self.train_image)
-        needle_path = os.path.join(self.directory, env.NEEDLE_IMAGE_NAME)
+        needle_path = os.path.join(self.directory, settings.NEEDLE_IMAGE_NAME)
         self.calibration['needle_image'] = needle_path
         self.calibration['step_value'] = self.value_step
         cv2.imwrite(needle_path, needle)
         self.set_calibration_parameters()
         path = "camera_{}_analog_gauge_{}.xml".format(self.calibration['camera_id'], self.calibration['index'])
-        path = os.path.join(env.XML_FILES_PATH, path)
+        path = os.path.join(settings.XML_FILES_PATH, path)
         xmlr.dict_to_xml(self.calibration, path, gauge=True)
         typer.secho('Saved parameters to {}'.format(path), fg='green')
 

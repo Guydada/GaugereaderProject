@@ -1,13 +1,8 @@
 import src.gauges.gauge as g
-import src.model.gauge_net as gn
 
+calibration_1 = 'camera_1_analog_gauge_1.xml'
+calibration_2 = 'camera_1_analog_gauge_6.xml'
 
-# calibration = g.AnalogGauge.calibrate()
-calibration = 'camera_1_analog_gauge_4.xml'
-analog_gauge = g.AnalogGauge(calibration)
-model = gn.GaugeNet()
-analog_gauge.train(model=model)
-model.save()
-analog_gauge.get_reading(frame='IMG_1681.jpg', model=model)
-
-
+for cal in [calibration_1, calibration_2]:
+    analog_gauge = g.AnalogGauge(cal)
+    analog_gauge.visual_test()

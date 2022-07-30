@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "gaugereader"
+version = "0.1.0"
+description = "GaugeReader Program Enviroment"
+authors = ["Guydada <dahanguy7@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "3.8"
+torch = "1.10.2"
+opencv-python = "^4.6.0"
+typer = "^0.6.1"
+xmltodict = "^0.13.0"
+torchvision = "0.11.3"
+matplotlib = "^3.5.2"
+seaborn = "^0.11.2"
+pandas = "^1.4.3"
+numpy = "^1.23.1"
+scikit-image = "^0.19.3"
+scikit-learn = "^1.1.1"
+jupyter = "^1.0.0"
+ipython = "^8.4.0"
+scipy = "^1.9.0"
+dynaconf = "^3.1.9"
+tk = "^0.1.0"
+netron = "^5.9.7"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

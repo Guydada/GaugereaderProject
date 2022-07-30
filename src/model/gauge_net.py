@@ -1,5 +1,4 @@
 import os
-import datetime
 import torch
 import typer
 import torch.nn as nn
@@ -8,13 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import netron
 
-import src.utils.envconfig as env
+from config import settings
 
-torch.manual_seed(env.TORCH_SEED)
+torch.manual_seed(settings.TORCH_SEED)
 
 
 class GaugeNet(nn.Module):
-    def __init__(self):
+    def __init__(self,
+                 directory: str):
         super(GaugeNet, self).__init__()
         self.layers = nn.Sequential(nn.Conv2d(in_channels=1,
                                               out_channels=16,
@@ -48,10 +48,14 @@ class GaugeNet(nn.Module):
         for i in [-1, -2]:
             if self.layers[i]._get_name() not in ['ReLU', 'Dropout']:
                 nn.init.xavier_uniform_(self.layers[i].weight)
-        self.device = env.DEVICE
+
+        self.device = settings.DEVICE
         self.criterion = torch.nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=env.LEARNING_RATE)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=settings.LEARNING_RATE)
         self.train_report = pd.DataFrame(columns=['epoch', 'train_loss', 'val_loss'])
+        self.best_epoch = 0
+        self.best_loss = np.inf
+        self.directory = directory
 
     def train_one_epoch(self,
                         train_loader):
@@ -61,7 +65,7 @@ class GaugeNet(nn.Module):
             angles = angles.to(self.device)
             self.optimizer.zero_grad()
             output = self(images)
-            loss = self.criterion(output, angles.reshape([env.BATCH_SIZE, 1]).float())
+            loss = self.criterion(output, angles.reshape([settings.BATCH_SIZE, 1]).float())
             loss.backward()
             self.optimizer.step()
             running_loss += loss.item()
@@ -71,62 +75,101 @@ class GaugeNet(nn.Module):
 
     def train_sequence(self,
                        train_loader,
+                       val_loader,
                        test_loader,
-                       directory,
-                       epochs: int = env.EPOCHS):
+                       epochs: int = settings.EPOCHS,
+                       transfer_learning: bool = True):
+        if transfer_learning:
+            try:
+                self = self.load(directory=self.directory)
+                typer.secho('Model loaded from checkpoint, transfer learning in progress', fg='yellow')
+            except FileNotFoundError or TypeError:
+                typer.secho('No checkpoint found, starting from scratch', fg='yellow')
+        else:
+            typer.secho('Starting from scratch. Existing weight files will be deleted', fg='yellow')
+
         for epoch in range(epochs):
             self.train(True)
             t_loss = self.train_one_epoch(train_loader)
             self.train(False)
-            v_loss = self.test_validation_sequence(test_loader, report=False)
+            v_loss = self.test_validation_sequence(val_loader, report=False)
+            if v_loss <= self.best_loss:
+                self.best_loss = v_loss
+                self.best_epoch = epoch
+                self.save(epoch='best')
             self.train_report.loc[epoch] = [epoch, t_loss, v_loss]
+            check = '✔' if v_loss <= settings.LOSS_THRESHOLD else '✘'
             typer.secho('Finished epoch # {:0>3} \t|\t '
-                        'Train loss: {:0.6f} \t|\t Validation loss: {:0.6f}'.format(epoch+1, t_loss, v_loss),
+                        'Train loss: {:0.6f} \t|\t Validation loss: {:0.6f}'
+                        ' {}'.format(epoch + 1, t_loss, v_loss, check),
                         fg="green")
-        self.test_validation_sequence(test_loader, directory=directory, report=True)
-        path = os.path.join(directory, 'train_report.csv')
+        self.save(epoch='last')
+        """
+        Last epoch is used to test the model on the test set and validation set.
+        """
+        val_loss = self.test_validation_sequence(val_loader, report=False)
+        test_loss = self.test_validation_sequence(test_loader, report=False)
+        self.print_loss(val_loss, test_loss)
+        """
+        Best epoch is used to test the model on the test set and validation set. Only the best model is saved is used 
+        for the reports.
+        """
+        epoch = 'best'
+        val_loss = self.test_validation_sequence(val_loader, report=True, epoch=epoch)
+        test_loss = self.test_validation_sequence(test_loader, report=True, epoch=epoch)
+        self.print_loss(val_loss, test_loss, epoch=epoch)
+
+        path = os.path.join(self.directory, 'train_report.csv')
         self.train_report.to_csv(path, index=False)
         self.train_report.plot(x='epoch', y=['train_loss', 'val_loss'], title='Training Report')
-        plt.savefig(os.path.join(directory, 'training_report.png'))
+        plt.savefig(os.path.join(self.directory, 'training_plots.png'))
         plt.close()
 
     def test_validation_sequence(self,
                                  test_loader,
-                                 directory: os.path = None,
-                                 report: bool = True):
+                                 report: bool = True,
+                                 epoch: str = 'last'):
         """
-        The test sequence is used to test the model on the test set.
-        :param directory:
+        The test and validation sequence is used to test the model on the test/validation set.
         :param test_loader:
         :return:
         """
         if report:
-            test_report = pd.DataFrame(columns=['real_angle', 'predicted_angle'])
+            df_report = pd.DataFrame(columns=['real_angle', 'predicted_angle'])
+        if epoch == 'best':
+            model = self.load(directory=self.directory, epoch=epoch)
+        else:
+            model = self
         with torch.no_grad():
             for data, target in test_loader:
-                data, target = data.to(self.device), target.to(self.device)
-                output = self(data)
-                loss = self.criterion(output, target.reshape([env.BATCH_SIZE, 1]).float())
+                if isinstance(data, torch.Tensor) and isinstance(target, torch.Tensor):
+                    data, target = data.to(self.device), target.to(self.device)
+                output = model(data)
+                loss = self.criterion(output, target.reshape([settings.BATCH_SIZE, 1]).float())
                 if report:
-                    df = np.stack([target.cpu().numpy(), output.squeeze().cpu().numpy()], axis=1)
-                    test_report = pd.concat([test_report,
-                                            pd.DataFrame(df,
-                                                         columns=['real_angle', 'predicted_angle'])])
+                    df_temp = np.stack([target.cpu().numpy(), output.squeeze().cpu().numpy()], axis=1)
+                    df_report = pd.concat([df_report,
+                                           pd.DataFrame(df_temp,
+                                                        columns=['real_angle', 'predicted_angle'])])
         if report:
-            path = os.path.join(directory, 'test_report.csv')
-            test_report.to_csv(path, index=False)
-            return test_report
+            path = os.path.join(self.directory, 'report.csv')
+            df_report.to_csv(path, index=False)
+            return loss.item()
         else:
             return loss.detach().item()
 
-    def save(self):
+    def save(self,
+             directory: str = None,
+             epoch: str = None):
         """
         Saves the model to the directory specified in the environment file.
         :return:
         """
-        path = os.path.join(env.MODELS_PATH, f'gauge_net_v{env.MODEL_VERSION}.pt')
-        if not os.path.exists(env.MODELS_PATH):
-            os.makedirs(env.MODELS_PATH)
+        if directory is None:
+            directory = self.directory
+        path = os.path.join(directory, f'gauge_net_v{settings.MODEL_VERSION}_{epoch}.pt')
+        if not os.path.exists(directory):
+            os.makedirs(settings.MODELS_PATH)
         torch.save(self, path)
 
     def forward(self, x):
@@ -140,17 +183,35 @@ class GaugeNet(nn.Module):
 
     @classmethod
     def load(cls,
-             version: str = env.MODEL_VERSION):
+             directory: str = None,
+             version: str = settings.MODEL_VERSION,
+             epoch: str = settings.DEFAULT_MODEL_TYPE):
         """
         Loads the model from the directory specified in the environment file
+        :param directory: Gauge directory
         :param version: optional, version of the model to load. if not specified, the default version is loaded
+        :param epoch: optional, epoch of the model to load. if not specified, the best epoch is loaded
         :return: trained model from saved file
         """
-        path = os.path.join(env.MODELS_PATH, f'gauge_net_v{version}.pt')
+        path = os.path.join(directory, f'gauge_net_v{version}_{epoch}.pt')
         return torch.load(path)
 
-
-mod = GaugeNet()
-mod.save()
-
-# netron.start()
+    @staticmethod
+    def print_loss(val_loss: float,
+                   test_loss: float,
+                   epoch: str = 'last'):
+        """
+        Prints the loss of the model for the validation and test set.
+        :param val_loss:
+        :param test_loss:
+        :param epoch: epoch version of the model: 'last', 'best'
+        :return:
+        """
+        icon = '🧪' if epoch == 'last' else '💪'
+        typer.secho(
+            'Final loos using {} \t{}\t epoch model weights \t|\t Validation {:0.6f} \t|\t Test: {:0.6f}'.format(
+                epoch.upper(),
+                icon,
+                val_loss,
+                test_loss),
+            fg="green")

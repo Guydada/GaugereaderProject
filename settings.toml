@@ -1,0 +1,34 @@
+# DEV mode
+DEV = 'True'
+
+# Directories and filenames
+GAUGE_CALIBRATION_FILE_XML = 'gauge_params.xml'  # Name of the gauge calibration_data file
+TRAIN_IMAGE_NAME = 'train_image.jpg'  # Name of the training image
+NEEDLE_IMAGE_NAME = 'needle_image.jpg'  # Name of the needle image
+TRAIN_SET_DIR_NAME = 'train_set'  # Name of the training set directory
+XML_FILE_NAME = "camera_{}_analog_gauge_{}"  # Name of the gauge calibration_data file
+VALIDATION_SET_DIR_NAME = 'validation_set'  # Name of the validation set directory
+REPORT_PLT_NAME = 'test_report.png'  # Name of the report plot
+
+# UI parameters
+WINDOW_SIZE = [1500, 1500]
+EDIT_IMAGE_SIZE = [500, 500]
+TRAIN_IMAGE_SIZE = 64
+REPORT_PLT_SIZE = 15
+
+# MODEL parameters
+LOSS_THRESHOLD = 0.002  # Threshold for the loss function
+BATCH_SIZE = 64
+EPOCHS = 150
+LEARNING_RATE = 0.001
+AUTO_ADD_EPOCHS = 'True'
+TORCH_SEED = 147
+NUM_WORKERS = 1
+DEFAULT_MODEL_TYPE = 'best'
+MODEL_VERSION = '1.0'
+
+# Gauge Types
+GAUGE_TYPES = ['analog', 'digital']
+
+# Other
+TEST_REPORT_IMAGE_TILE = 8

@@ -6,7 +6,7 @@ import PIL.Image as Image
 import PIL.ImageTk as ImageTk
 import torchvision.transforms as tf
 
-import src.utils.envconfig as env
+from config import settings
 import src.utils.point_math as pm
 
 
@@ -22,8 +22,8 @@ def factor_resize(image: np.ndarray):
         factor = w
     else:
         factor = h
-    w = int(w * env.WINDOW_SIZE[0] / factor)
-    h = int(h * env.WINDOW_SIZE[1] / factor)
+    w = int(w * settings.WINDOW_SIZE[0] / factor)
+    h = int(h * settings.WINDOW_SIZE[1] / factor)
     image = cv2.resize(image, (w, h), interpolation=cv2.INTER_AREA)
     return image, h, w
 
@@ -104,8 +104,8 @@ def four_point_transform(image,
 
 
 def frame_to_read_image(frame,
-                        crop_coords,
-                        perspective_pts,
+                        crop_coords = None,
+                        perspective_pts=None,
                         perspective_changed: bool = False):
     """
     Convert a frame to a PIL image, crop it, and apply a perspective transform
@@ -116,19 +116,19 @@ def frame_to_read_image(frame,
     :return:
     """
     frame, _x, _y = factor_resize(frame)
-    y, y_diff, x, x_diff = crop_coords
-    frame = frame[y:y_diff, x:x_diff]
+    if crop_coords is not None:
+        y, y_diff, x, x_diff = crop_coords
+        frame = frame[y:y_diff, x:x_diff]
     frame, _x, _y = factor_resize(frame)
-    if perspective_changed:
+    if perspective_changed and perspective_pts is not None:
         frame = four_point_transform(frame, perspective_pts)
     if len(frame.shape) > 2:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    frame = cv2.resize(frame, env.TRAIN_IMAGE_SHAPE)
-    cv2.imwrite("edited_frame.png", frame)
+    frame = cv2.resize(frame, settings.TRAIN_IMAGE_SHAPE)
     frame = Image.fromarray(frame)
     transform = tf.Compose([tf.ToTensor(), tf.Normalize(mean=[0.5], std=[0.5])])
     frame = transform(frame)
-    return frame.unsqueeze(0).to(env.DEVICE)
+    return frame.unsqueeze(0).to(settings.DEVICE)
 
 
 scale = list(np.linspace(0.81, 0.99, 10))

@@ -1,49 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gauge>
 	<needle>
-		<mask_lines>[(326, 849), (725, 777), 8]</mask_lines>
-		<mask_lines>[(324, 850), (732, 810), 8]</mask_lines>
-		<mask_lines>[(799, 765), (918, 702), 8]</mask_lines>
-		<mask_lines>[(922, 702), (951, 758), 8]</mask_lines>
-		<mask_lines>[(951, 758), (947, 825), 8]</mask_lines>
-		<mask_lines>[(947, 825), (811, 806), 8]</mask_lines>
-		<mask_lines>[(803, 770), (806, 802), 8]</mask_lines>
-		<mask_lines>[(804, 769), (813, 808), 8]</mask_lines>
-		<mask_lines>[(725, 781), (728, 809), 8]</mask_lines>
-		<mask_lines>[(719, 791), (397, 841), 18]</mask_lines>
-		<mask_lines>[(724, 798), (596, 817), 18]</mask_lines>
-		<mask_lines>[(722, 786), (704, 788), 18]</mask_lines>
-		<mask_lines>[(819, 791), (947, 801), 40]</mask_lines>
-		<mask_lines>[(949, 767), (803, 783), 40]</mask_lines>
-		<mask_lines>[(812, 768), (928, 725), 40]</mask_lines>
-		<mask_lines>[(935, 739), (903, 752), 40]</mask_lines>
-		<mask_lines>[(937, 752), (901, 713), 40]</mask_lines>
-		<width>40</width>
-		<angle_deviation>-94.3902</angle_deviation>
-		<max_angle>-136.0976</max_angle>
-		<min_angle>131.7073</min_angle>
+		<mask_lines>[(887, 476), (1009, 306), 14]</mask_lines>
+		<mask_lines>[(1004, 318), (872, 470), 14]</mask_lines>
+		<mask_lines>[(884, 477), (1012, 297), 14]</mask_lines>
+		<mask_lines>[(1014, 296), (871, 468), 14]</mask_lines>
+		<mask_lines>[(882, 478), (1015, 303), 14]</mask_lines>
+		<mask_lines>[(1024, 289), (1008, 300), 2]</mask_lines>
+		<mask_lines>[(1020, 289), (1008, 297), 2]</mask_lines>
+		<mask_lines>[(1020, 289), (1016, 305), 2]</mask_lines>
+		<mask_lines>[(1023, 290), (1015, 309), 2]</mask_lines>
+		<mask_lines>[(1021, 295), (1011, 301), 2]</mask_lines>
+		<mask_lines>[(1018, 291), (1005, 306), 2]</mask_lines>
+		<mask_lines>[(1013, 297), (951, 361), 2]</mask_lines>
+		<width>2</width>
+		<angle_deviation>37.3171</angle_deviation>
+		<max_angle>-116.3415</max_angle>
+		<min_angle>114.1463</min_angle>
 	</needle>
-	<directory>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_1</directory>
+	<directory>G:\My Drive\Programming Projects\GaugeReader\data\gauges\camera_1\gauge_1</directory>
 	<index>1</index>
 	<camera_id>1</camera_id>
-	<crop>522</crop>
-	<crop>805</crop>
-	<crop>594</crop>
-	<crop>877</crop>
-	<min_value>-1.0</min_value>
-	<max_value>5.0</max_value>
+	<crop>392</crop>
+	<crop>1421</crop>
+	<crop>50</crop>
+	<crop>1079</crop>
+	<min_value>-7.0</min_value>
+	<max_value>30.0</max_value>
 	<units>Bar</units>
-	<train_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_1/train_image.jpg</train_image>
-	<needle_image>/home/guyda/PycharmProjects/pythonProject2/GaugereaderProject/data/gauges/camera_1/gauge_1/needle_image.jpg</needle_image>
-	<step_value>0.022404369748275706</step_value>
-	<center>766</center>
-	<center>790</center>
-	<radius>276</radius>
+	<train_image>G:\My Drive\Programming Projects\GaugeReader\data\gauges\camera_1\gauge_1\train_image.jpg</train_image>
+	<needle_image>G:\My Drive\Programming Projects\GaugeReader\data\gauges\camera_1\gauge_1\needle_image.jpg</needle_image>
+	<step_value>0.16052910392654188</step_value>
+	<center>747</center>
+	<center>647</center>
+	<radius>0</radius>
 	<width>1500</width>
 	<height>1500</height>
-	<perspective_changed>true</perspective_changed>
+	<perspective_changed>false</perspective_changed>
 	<perspective>[0, 0]</perspective>
-	<perspective>[1500, 0]</perspective>
-	<perspective>[1500, 1500]</perspective>
-	<perspective>[0, 1500]</perspective>
+	<perspective>[0, 0]</perspective>
+	<perspective>[0, 0]</perspective>
+	<perspective>[0, 0]</perspective>
 </gauge>

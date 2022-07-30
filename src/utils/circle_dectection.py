@@ -6,6 +6,14 @@ def find_circles(image,
                  min_radius: int,
                  max_radius: int,
                  min_distance: int):
+    """
+    Finds circles in an image.
+    :param image:
+    :param min_radius:
+    :param max_radius:
+    :param min_distance:
+    :return:
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     circles = cv2.HoughCircles(gray,
                                method=cv2.HOUGH_GRADIENT,
