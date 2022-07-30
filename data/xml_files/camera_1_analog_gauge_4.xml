@@ -1,39 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gauge>
 	<needle>
-		<mask_lines>[(326, 998), (633, 723), 30]</mask_lines>
-		<mask_lines>[(641, 735), (326, 995), 30]</mask_lines>
-		<mask_lines>[(702, 649), (780, 521), 30]</mask_lines>
-		<mask_lines>[(781, 527), (859, 614), 30]</mask_lines>
-		<mask_lines>[(860, 621), (725, 661), 30]</mask_lines>
-		<mask_lines>[(729, 661), (725, 636), 30]</mask_lines>
-		<mask_lines>[(727, 639), (789, 557), 30]</mask_lines>
-		<mask_lines>[(789, 557), (833, 611), 30]</mask_lines>
-		<mask_lines>[(837, 612), (743, 647), 30]</mask_lines>
-		<mask_lines>[(748, 642), (802, 580), 30]</mask_lines>
-		<mask_lines>[(824, 595), (783, 615), 30]</mask_lines>
-		<mask_lines>[(837, 619), (777, 546), 30]</mask_lines>
-		<width>30</width>
-		<angle_deviation>-131.7073</angle_deviation>
-		<max_angle>-131.7073</max_angle>
-		<min_angle>133.9024</min_angle>
+		<mask_lines>[(376, 1024), (687, 726), 8]</mask_lines>
+		<mask_lines>[(378, 1025), (699, 737), 34]</mask_lines>
+		<mask_lines>[(766, 660), (849, 531), 34]</mask_lines>
+		<mask_lines>[(845, 542), (933, 625), 34]</mask_lines>
+		<mask_lines>[(933, 625), (780, 682), 34]</mask_lines>
+		<mask_lines>[(782, 670), (854, 567), 34]</mask_lines>
+		<mask_lines>[(846, 573), (904, 617), 34]</mask_lines>
+		<mask_lines>[(905, 617), (811, 646), 34]</mask_lines>
+		<mask_lines>[(812, 645), (861, 600), 34]</mask_lines>
+		<width>34</width>
+		<angle_deviation>-136.0976</angle_deviation>
+		<max_angle>-129.5122</max_angle>
+		<min_angle>136.0976</min_angle>
 	</needle>
-	<directory>/home/guyda/Projects/GaugereaderProject/data/gauges/camera_1/gauge_4</directory>
+	<directory>/home/guyda/CE/GaugereaderProject/data/gauges/camera_1/gauge_4</directory>
 	<index>4</index>
 	<camera_id>1</camera_id>
-	<crop>555</crop>
-	<crop>815</crop>
-	<crop>927</crop>
-	<crop>1187</crop>
+	<crop>557</crop>
+	<crop>808</crop>
+	<crop>921</crop>
+	<crop>1172</crop>
 	<min_value>0.0</min_value>
 	<max_value>25.0</max_value>
 	<units>Bar</units>
-	<train_image>/home/guyda/Projects/GaugereaderProject/data/gauges/camera_1/gauge_4/train_image.jpg</train_image>
-	<needle_image>/home/guyda/Projects/GaugereaderProject/data/gauges/camera_1/gauge_4/needle_image.jpg</needle_image>
-	<step_value>0.09412306854757188</step_value>
-	<center>675</center>
-	<center>698</center>
-	<radius>263</radius>
+	<train_image>/home/guyda/CE/GaugereaderProject/data/gauges/camera_1/gauge_4/train_image.jpg</train_image>
+	<needle_image>/home/guyda/CE/GaugereaderProject/data/gauges/camera_1/gauge_4/needle_image.jpg</needle_image>
+	<step_value>0.09412303311097708</step_value>
+	<center>735</center>
+	<center>714</center>
+	<radius>255</radius>
 	<width>1500</width>
 	<height>1500</height>
 	<perspective_changed>false</perspective_changed>

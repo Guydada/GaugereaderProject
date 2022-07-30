@@ -6,6 +6,7 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import netron
 
 import src.utils.envconfig as env
 
@@ -124,6 +125,8 @@ class GaugeNet(nn.Module):
         :return:
         """
         path = os.path.join(env.MODELS_PATH, f'gauge_net_v{env.MODEL_VERSION}.pt')
+        if not os.path.exists(env.MODELS_PATH):
+            os.makedirs(env.MODELS_PATH)
         torch.save(self, path)
 
     def forward(self, x):
@@ -145,3 +148,9 @@ class GaugeNet(nn.Module):
         """
         path = os.path.join(env.MODELS_PATH, f'gauge_net_v{version}.pt')
         return torch.load(path)
+
+
+mod = GaugeNet()
+mod.save()
+
+# netron.start()
