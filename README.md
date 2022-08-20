@@ -454,13 +454,13 @@ All of the above can be found in the ![Excel](./docs/layers_design.xlsx) file.
 
 Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. Using Netron to show the structure:
 
+<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
+
 ### Performance Metrics
 
 In order to calculate loss I chose to use MSE loss. The MSE loss is a good choice for regression problems. It is
 implemented in Pytorch and is available in the `torch.nn` library. The loss is calculated over the projected angle in
 radians vs the actual angle in radians.
-
-<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
 
 The chosen optimizer is Adam. Adam is also good choice for regression problems and is implemented in Pytorch as well.
 
