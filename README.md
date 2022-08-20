@@ -408,14 +408,31 @@ for a regression problem:
 
 I came across the following equations:
 
-> $(\ceil{N+f-1})/(s)$
+> $\frac{\left\lceil N-f+1\ \right\rceil}{s}$
+
+$N stands for the input number of dimensions (number of pixels in input image for first layer) and f is the filter size.
+s is the stride length. In order to calculate the next layer I simply used the equation above replacing N with the previous
+layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply:
+
+> $N\bulletN\bulletf$
+
+Where $N is again the input size and $f is the filter size for each layer.
+
+All of the above can be found in the ![Excel](docs/layers_design.xlsx) file.   
+
+activation size I simply multiply $N\d
 
 Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. The full achieved structure shows below:
 
-<img src=".readme_media/gauge_net_v1.0_best.png" width="200" align="center">
-
+<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
 
 ### Performance Metrics
+
+In order to calculate loss I chose to use MSE loss. The MSE loss is a good choice for regression problems. It is
+implemented in Pytorch and is available in the `torch.nn` library. The loss is calculated over the projected angle in
+radians vs the actual angle in radians.
+
+The chosen optimizer is Adam. Adam is also good choice for regression problems and is implemented in Pytorch as well.
 
 ### Results
 
