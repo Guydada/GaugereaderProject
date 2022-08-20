@@ -11,24 +11,25 @@ VALIDATION_SET_DIR_NAME = 'validation_set'  # Name of the validation set directo
 REPORT_PLT_NAME = 'test_report.png'  # Name of the report plot
 
 # UI parameters
-WINDOW_SIZE = [1500, 1500]
-EDIT_IMAGE_SIZE = [500, 500]
-TRAIN_IMAGE_SIZE = 64
-REPORT_PLT_SIZE = 15
+WINDOW_SIZE = [1500, 1500] # Default Calibrator app window size (width, height)
+EDIT_IMAGE_SIZE = [500, 500] # Default edit image window size (pixels)
+TRAIN_IMAGE_SIZE = 64 # Default train image size (pixels)
+REPORT_PLT_SIZE = 15 # Default report plot size (inches)
 
 # MODEL parameters
 LOSS_THRESHOLD = 0.002  # Threshold for the loss function
-BATCH_SIZE = 64
-EPOCHS = 150
-LEARNING_RATE = 0.001
-AUTO_ADD_EPOCHS = 'True'
-TORCH_SEED = 147
-NUM_WORKERS = 1
-DEFAULT_MODEL_TYPE = 'best'
-MODEL_VERSION = '1.0'
+BATCH_SIZE = 64 # Batch size for dataset loading and training
+BATCH_MULTIPLIER = 3 # Batch multiplier for building the dataset
+EPOCHS = 100 # Number of epochs for training
+LEARNING_RATE = 0.001 # Learning rate for the model
+AUTO_ADD_EPOCHS = 'True' # Automatically add epochs to the model when training if the loss is below the threshold
+TORCH_SEED = 147 # Seed for the torch random number generator
+NUM_WORKERS = 1 # Number of workers for dataset loading
+DEFAULT_MODEL_TYPE = 'best' # Default model type for loading (best or latest)
+MODEL_VERSION = '1.0' # Model version for saving
 
 # Gauge Types
-GAUGE_TYPES = ['analog', 'digital']
+GAUGE_TYPES = ['analog', 'digital'] # List of gauge types supported by the app
 
 # Other
-TEST_REPORT_IMAGE_TILE = 8
+TEST_REPORT_IMAGE_TILE = 8 # Number of images in the test report image tile

@@ -116,7 +116,7 @@ class GaugeNet(nn.Module):
         """
         epoch = 'best'
         val_loss = self.test_validation_sequence(val_loader, report=True, epoch=epoch)
-        test_loss = self.test_validation_sequence(test_loader, report=True, epoch=epoch)
+        test_loss = self.test_validation_sequence(test_loader, report=True, epoch=epoch, set_name='test')
         self.print_loss(val_loss, test_loss, epoch=epoch)
 
         path = os.path.join(self.directory, 'train_report.csv')
@@ -128,6 +128,7 @@ class GaugeNet(nn.Module):
     def test_validation_sequence(self,
                                  test_loader,
                                  report: bool = True,
+                                 set_name: str = 'val',
                                  epoch: str = 'last'):
         """
         The test and validation sequence is used to test the model on the test/validation set.
@@ -152,11 +153,9 @@ class GaugeNet(nn.Module):
                                            pd.DataFrame(df_temp,
                                                         columns=['real_angle', 'predicted_angle'])])
         if report:
-            path = os.path.join(self.directory, 'report.csv')
+            path = os.path.join(self.directory, f'{set_name}_report.csv')
             df_report.to_csv(path, index=False)
-            return loss.item()
-        else:
-            return loss.detach().item()
+        return loss.detach().item()  # TODO: Validate this is not causing bugs
 
     def save(self,
              directory: str = None,

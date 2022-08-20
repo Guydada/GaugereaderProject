@@ -40,6 +40,12 @@ class Gauge:
             self.calibration['directory'] = self.directory
         self.transfer_learning = transfer_learning
 
+    def start(self):
+        """
+        Start the gauge application.
+        """
+        pass
+
     def train(self):
         """
         Train the model.
@@ -98,6 +104,12 @@ class AnalogGauge(Gauge):
         if self.needle_image is None:
             raise FileNotFoundError(f'Needle image "{self.needle_image}" not found')
 
+        self.angles = None
+        self.datasets = None
+        self.data_loaders = None
+        self.model = None
+
+    def start(self):
         # Angles
         self.angles = self.init_angles()
 
@@ -110,6 +122,7 @@ class AnalogGauge(Gauge):
         # Model
         try:
             self.model = gn.GaugeNet.load(directory=self.directory)
+            typer.secho(f'Model loaded from {self.directory}', fg='green')
         except FileNotFoundError:
             if settings.DEV == 'True':
                 confirm = True
@@ -173,6 +186,7 @@ class AnalogGauge(Gauge):
         """
         Test the model's performance.
         """
+        typer.secho(f'Testing model on {settings.DEVICE}', fg=typer.colors.CYAN)
         if model is None:
             model = self.model
         test_path = os.path.join(self.directory, 'test')
@@ -184,8 +198,8 @@ class AnalogGauge(Gauge):
         for i, image in enumerate(start=1, iterable=test_images):
             if i > size * size:
                 break
-            pred_value = self.get_reading(model=model,
-                                          frame=image,
+            pred_value = self.get_reading(frame=image,
+                                          model=model,
                                           restore_edit_steps=False,
                                           prints=False)
             fig.add_subplot(fig_shape[0], fig_shape[1], i)
@@ -199,10 +213,11 @@ class AnalogGauge(Gauge):
         # enlarge spacing between subplots
         fig.subplots_adjust(hspace=0.5)
         fig.savefig(os.path.join(self.directory, settings.REPORT_PLT_NAME))
+        typer.secho(f'Test results saved to {self.directory}', fg=typer.colors.GREEN)
 
     def get_reading(self,
-                    model,
                     frame: str or np.ndarray,
+                    model: gn.GaugeNet = None,
                     restore_edit_steps: bool = True,
                     prints: bool = True):
         """

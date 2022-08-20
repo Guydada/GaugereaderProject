@@ -29,6 +29,6 @@ settings.DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 settings.TRAIN_IMAGE_SHAPE = [settings.TRAIN_IMAGE_SIZE] * 2  # Shape of the images
 
 # Train Settings
-settings.IMAGE_TRAIN_SET_SIZE = settings.BATCH_SIZE * 3
+settings.IMAGE_TRAIN_SET_SIZE = settings.BATCH_SIZE * settings.BATCH_MULTIPLIER  # Size of the training set
 settings.IMAGE_VAL_SET_SIZE = settings.BATCH_SIZE
 settings.IMAGE_TEST_SET_SIZE = settings.BATCH_SIZE
