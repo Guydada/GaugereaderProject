@@ -1,5 +1,9 @@
 # Ignore data folders
 /data/
+/data/gauges/camera_1/gauge_1/
+/data/gauges/camera_1/gauge_5/
+/data/gauges/camera_1/gauge_6/
+
 
 # Ignore dynaconf secret files
 .secrets.*

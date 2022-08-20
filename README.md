@@ -27,6 +27,10 @@ Analog Gauge Reading Using CNN Regression
 2. [Installation](#installation)
 3. [Usage](#Usage)
 4. [Academic Report](#Report)
+___
+### Full Demo Video  
+[![IMAGE ALT TEXT HERE](.readme_media/youtube.png)](https://www.youtube.com/watch?v=Bdhece7qKJQ)
+___
 
 # Requirements
 
@@ -296,8 +300,100 @@ analog_gauge = g.AnalogGauge('camera_{}_analog_gauge_{}.xml').get_reading('image
 ___
 
 # Academic Report
-
+In this part I will dive into the principals and ideas behind the app. This will serve as my submission final
+report. 
 ## Abstract
+In order to solve the problem of realtime gauge reading, I used a neural network to predict the angle of
+a needle in an analog gauge. The neural network is trained to predict the angle of a needle based on synthetic 
+data generated after a quick user guided calibration using a "Calibrator App". The offered CNN supplies an elegant,
+easy to deploy solution that is also very flexible. This allows fast deployment in a production environment and better
+results when compared to out of the box classic computer vision solutions such as OpenCV.
+
+## Introduction
+Ships are a complex system of multiple components. As years go by, less available trained personnel are available
+and the level of complexity rises. In order to operate a ship today, many hours are wasted on in person approach to 
+reading and storing analog gauges. The app is designed to reduce this waste by automating the process.
+
+Traditionally, CNNs are used in classification or object detection problems. I chose to use a neural network in a regression
+task for the purpose of this project. This allows me to generate a high performance model and also allows me to use
+the Pytorch framework, to use GPU in order to accelerate training and much more. 
+
+## Define the Problem
+> Get a reading from an analog gauge remotely, constantly and with minimal human presence 
+> Secondary problem: It's near impossible to generate consistent and extensive training data for an installed analof gauge
+
+## Define the Solution
+When approaching this problem, one might think that the simplest solution is to install a digital sensor near the gauge
+that will upload the reading constantly. While this is very possible - it takes time, the equipment is expensive 
+and implementation is difficult - it is not the best solution for existing system. Furthermore, many marine companies
+don't allow the owner to perform changes to the mechanical systems due to warranty and service issues.
+
+A camera on the other hand costs ~ 100$, it's easy to install and connect. Even better - most ships already have
+extensive amounts of cameras installed (CCTV). 
+
+Since that an installed gauge is impossible to dial into all the available angles, synthetic data is used to train the model.
+
+## Implementation
+Since I have created this project for the Captain-Eye company, the framework for receiving the video feed, image frames
+and storing data is already available. I had to think of a way to implement a light network that will be deployed 
+into the existing system.
+
+The offered solution:
+- A native calibration app
+- Built in training process generating:
+  - Synthetic data
+  - Trained model
+  - Validation and testing reports
+- Built in reading process using the trained model
+
+See below the implementation of the app structure:
+
+```mermaid
+flowchart TD
+  A(Source code) --> B(Calibrator App)
+  A --> C(Gauge Classes)
+  C --> D(Analog Gauge)
+  C --> E(Digital Gauge - not implemented)
+  A --> F(CNN Mode)
+```
+
+## Calibrator App
+
+The app was built entirely using Python TKinter. The app is designed to be used in a desktop environment. The app
+works on both Windows and Linux.  It has built in error handling. The whole calibration process takes around 2 minutes
+and has top be done only once. Furthermore, the calibration can be later edited simply by editing the XML file.
+
+I used different technics in order to make the process fast and extensible, and also implemented a few smart computer
+vision techniques.
+
+### Image manipulation
+
+The app uses OpenCV to manipulate images. The available tools are available from within the app as a part of the calibration
+process:
+- Image cropping
+- Image rotation
+- Perspective Transformation
+- Automatic circle detection
+
+All of the above were implemented using the OpenCV library.
+
+In addition to that, I have implemented a way to automatically mask the needle image from the gauge image. This allows me
+to later rotate the needle image and use it to generate synthetic data.
+
+![<img src=".readme_media/cutting.jpg" width="600">]
+
+## Synthetic Data Generation
+
+The synthetic data is created using the following steps:
+```mermaid
+flowchart LR
+A[Calculate linear space between min and max angles] --> B[Randomly select angles] --> C[Split into training, validation and test sets]
+```
+This is implemented using numpy `linspace` function.
+
+The image writing to files is all done using OpenCV.
+
+## 
 
 ### Coding Standards
 
@@ -309,51 +405,6 @@ I have taken a big effort to try and withstand the following:
 - Simplicity
 - Minimal code duplication using inheritance and composition
 - Version control is done using [Git](https://git-scm.com/).
-
-## Define the Problem
-
-The problem we are trying to solve is to recommend articles to users based on their behavior and the articles they
-have read and interacted with. This seemingly simple problem is actually a huge challenge in the field of
-recommendation.
-We think this dataset is especially interesting because it gives us the opportunity to explore both collaborative and
-content based filtering approaches.
-
-Additional challenges include:
-
-- How to create the features?
-- How much of the data is relevant?
-- How to evaluate the results?
-
-```mermaid
-graph LR
-A[User] -- History --> B(Mean History Vector)
-A --Impressions--> C(Impressions Vectors)
-B --> D{Cosine Similarity}
-C --> D
-D --> h(TF-IDF Score)
-h --> k(User Labels)
-k --> j(TF-IDF nDCG Score)
-G(User Click Score) --> k 
-k --> i(User Click nDCG Score)
-i<-->j
-j<--compare-->i 
-```
-
-### Performance Metrics
-
-
-
-The synthetic data is created using the following steps:
-```mermaid
-flowchart LR
-A[Calculate linear space between min and max angles] --> B[Randomly select angles] --> C[Split into training, validation and test sets]
-```
-This is implemented using numPy's `linspace` function.
-
-```mermaid
-flowchart LR
-```
-
 ### Model Architecture
 
 ### Performance Metrics
