@@ -4,8 +4,8 @@ Analog Gauge Reading Using CNN Regression
 =======================================
 ***A Deep Learning Approach for Automated Gauge Reading using CNN regression***
 ***
-![python](https://img.shields.io/badge/🐍Python-v3.8-blue) ![pytorch](https://img.shields.io/badge/pytorch-v1.10.2-red)
-![pytorch](https://img.shields.io/badge/torchvision-v0.11.3-cyan)![pytorch](https://img.shields.io/badge/pytorch-v1.10.2-red)
+![python](https://img.shields.io/badge/🐍Python-v3.8-blue) ![pytorch](https://img.shields.io/badge/🔥pytorch-v1.10.2-red)
+![pytorch](https://img.shields.io/badge/🕶torchvision-v0.11.3-cyan)
 ![version](https://img.shields.io/badge/Version-v1.0-green) ![version](https://img.shields.io/badge/platform-Linux|Windows10-blue)
 ***
 > **Authors:**
@@ -44,18 +44,11 @@ ___
 ```
 ├───src
 │   ├───calibrator
-│   │   └───__pycache__
 │   ├───gauges
-│   │   └───__pycache__
 │   ├───model
-│   │   └───__pycache__
-│   ├───utils
-│   │   └───__pycache__
-│   └───__pycache__
+│   └───utils
 ├───demo
-├───__pycache__
-├───docs
-└───.readme_media
+└───docs
 ```
 
 - `src` - Contains the source code of the project
@@ -68,7 +61,6 @@ ___
 - `settings.toml` - The project's local settings file. When cloned this will generate the default settings.
 - `config.py` - This file will generate environment specific settings for the project, including the generation of data
   directories and their respective paths.
-
 ___
 
 # Installation
@@ -416,10 +408,11 @@ for a regression problem:
 
 I came across the following equations:
 
-> $\ceil[\big]{N+f-1}/s$
+> $(\ceil{N+f-1})/(s)$
 
 Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. The full achieved structure shows below:
-<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
+
+<img src=".readme_media/gauge_net_v1.0_best.png" width="200" align="center">
 
 
 ### Performance Metrics
