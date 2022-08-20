@@ -208,7 +208,7 @@ class GaugeNet(nn.Module):
         """
         icon = '🧪' if epoch == 'last' else '💪'
         typer.secho(
-            'Final loos using {} \t{}\t epoch model weights \t|\t Validation {:0.6f} \t|\t Test: {:0.6f}'.format(
+            'Final loss using {} \t{}\t epoch model weights \t|\t Validation {:0.6f} \t|\t Test: {:0.6f}'.format(
                 epoch.upper(),
                 icon,
                 val_loss,

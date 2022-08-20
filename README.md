@@ -380,7 +380,7 @@ All of the above were implemented using the OpenCV library.
 In addition to that, I have implemented a way to automatically mask the needle image from the gauge image. This allows me
 to later rotate the needle image and use it to generate synthetic data.
 
-![<img src=".readme_media/cutting.jpg" width="600">]
+<img src=".readme_media/cutting.jpg" width="600">
 
 ## Synthetic Data Generation
 
@@ -406,6 +406,21 @@ I have taken a big effort to try and withstand the following:
 - Minimal code duplication using inheritance and composition
 - Version control is done using [Git](https://git-scm.com/).
 ### Model Architecture
+The main consideration for building this model was keeping it as light as possible. The model's architecture was built
+using Pytorch. In order to design the CNN layers I read several articles and books and gathered the following principals
+for a regression problem:
+
+- Keeping the input image size as small as possible with good results
+- Adding layers until convergence is rather fast
+- Calculating the layers inputs and outputs for the chosen image size
+
+I came across the following equations:
+
+> $\ceil[\big]{N+f-1}/s$
+
+Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. The full achieved structure shows below:
+<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
+
 
 ### Performance Metrics
 
