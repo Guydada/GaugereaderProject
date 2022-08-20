@@ -22,10 +22,10 @@ ipython = "^8.4.0"
 scipy = "^1.9.0"
 dynaconf = "^3.1.9"
 tk = "^0.1.0"
-netron = "^5.9.7"
 plotly = "^5.9.0"
 
 [tool.poetry.dev-dependencies]
+netron = "^5.9.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
