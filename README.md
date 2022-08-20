@@ -1,7 +1,6 @@
-[![Captain's Eye](.readme_media/logo-white-blue-sm.png)](https://www.captain-eye.com/)
-***
 Analog Gauge Reading Using CNN Regression
 =======================================
+
 ***A Deep Learning Approach for Automated Gauge Reading using CNN regression***
 ***
 ![python](https://img.shields.io/badge/🐍Python-v3.8-blue) ![pytorch](https://img.shields.io/badge/🔥pytorch-v1.10.2-red)
@@ -11,15 +10,19 @@ Analog Gauge Reading Using CNN Regression
 
 ***
 > **Authors:**
+>
 > - [Guy Dahan](https://github.com/Guydada)
+>
 ***
 > **Submission:**
+>
 > - Supervising company: [Captain's-Eye](https://www.captain-eye.com/)
 > - Project Instructor: Mr. Doron Oizerovich
 > - Project Supervisor: [Dr. Jonatan Ostrometzky](https://english.tau.ac.il/profile/jonatano)
 > - Faculty: [Engineering](https://en-engineering.tau.ac.il/)
 > - Department: [Digital Sciences for Hi-Tech](https://en-engineering.tau.ac.il/BSc-in-Digital-Sciences-for-Hi-Tech)
 > - [Tel-Aviv University](https://english.tau.ac.il/)
+>
 ***
 ![Tel-Aviv University](https://english.tau.ac.il/sites/default/files/TAU_Logo_HomePage_Eng.png)
 
@@ -29,9 +32,12 @@ Analog Gauge Reading Using CNN Regression
 2. [Installation](#installation)
 3. [Usage](#Usage)
 4. [Demo](#Demo)
-5. [Academic Report](#Academic Report)
+5. [Report](#Report)
+
 ___
-### Full Demo Video  
+
+# Full Demo Video  
+
 [![IMAGE ALT TEXT HERE](.readme_media/youtube.png)](https://www.youtube.com/watch?v=Bdhece7qKJQ)
 ___
 
@@ -55,15 +61,16 @@ ___
 ```
 
 - `src` - Contains the source code of the project
-    - calibrator - Contains the code for the Calibrator App
-    - gauges - Contains the code for the Gauges classes
-    - model - Contains the code for the CNN regression model
-    - utils - Contains the code for the utility functions IE mathematical functions and image processing functions
+  - calibrator - Contains the code for the Calibrator App
+  - gauges - Contains the code for the Gauges classes
+  - model - Contains the code for the CNN regression model
+  - utils - Contains the code for the utility functions IE mathematical functions and image processing functions
 - `docs` - Documentation and an academic [poster](docs/poster_gauge_Guy_Dahan.pdf) made for the project
 - `README.md` - The current document, serving as the final report for this project
 - `settings.toml` - The project's local settings file. When cloned this will generate the default settings.
 - `config.py` - This file will generate environment specific settings for the project, including the generation of data
   directories and their respective paths.
+
 ___
 
 # Installation
@@ -78,13 +85,13 @@ Clone the repository, and run the following commands in the root directory of th
 ## Using Poetry
 
 ```bash
-$ poetry install
-``` 
+poetry install
+```
 
 ## Using Anaconda
 
 ```bash
-$ conda create --name <env> --file requirements.txt
+conda create --name <env> --file requirements.txt
 ```
 
 ## Settings file
@@ -135,7 +142,7 @@ A[Calibration] --> B[Training] --> C[Reading]
 
 # Demo
 
-> **_NOTE:_** This project was designed completely to fit Captain's-Eye requirements, so it does not have any need for a
+> ***NOTE:*** This project was designed completely to fit Captain's-Eye requirements, so it does not have any need for a
 > native CLI
 > interface. The application will give some feedback using the terminal regarding errors and progress.
 
@@ -146,8 +153,8 @@ of calibration, training and reading from a gauge using the code and image sampl
 
 Got to `demo` directory and run:
 
-```bash 
-$ python full_demo.py
+```bash
+python full_demo.py
 ```
 
 The Calibrator App will open:
@@ -188,41 +195,48 @@ Click the `Set Perspective` button to fix the perspective issues. Use either pic
 the perspective bars.
 ![](.readme_media/gif/perspective.gif)
 
-#### Circle Detection 
+#### Circle Detection
+
 When clicked, the app will try to automatically detect the gauge center. If it fails (visually examined by the user)
 Pick the center manually.
 ![](.readme_media/gif/circle.gif)
 
 #### Needle Detection
+
 Set the parameters for the gauge - max reading, min reading and units. Then simply draw the needle on the image.
 The size of the brush can be changed using the 'line width' slider.
 ![](.readme_media/gif/needle.gif)
 
 #### Set Zero Angle
-Rotate the gauge to the center angle and mark it. this will change slightly from gauge to gauge and is used for 
-calculating the reading the gauge later. 
+
+Rotate the gauge to the center angle and mark it. this will change slightly from gauge to gauge and is used for
+calculating the reading the gauge later.
 ![](.readme_media/gif/zero.gif)
 
 #### Set Min Angle
+
 Rotate the gauge to the minimal angle and mark it.
 ![](.readme_media/gif/min.gif)
 
 #### Set Max Angle
+
 Rotate the gauge to the max angle and mark it.
 ![](.readme_media/gif/max.gif)
 
 #### Test Reading
+
 Test the reading from the angles. The reading will be displayed in the bottom bar. Visually examine the reading to
 make sure the calibration is correct.
 ![](.readme_media/gif/test.gif)
 
-> **_NOTE:_** If reading is not correct, it usually indicates that the perspective is not correct. Try to reset and
+> ***NOTE:*** If reading is not correct, it usually indicates that the perspective is not correct. Try to reset and
 > re-calibrate the gauge.
 
 ## Synthetic Data
 
 Synthetic data will be created automatically for the gauge. The synthetic data is created using the calibration data and
 will be split into three sets:
+
 - Training set
 - Validation set
 - Test set
@@ -230,12 +244,12 @@ will be split into three sets:
 The default split is determined by the batch size, and the default train size is 3 times the batch size. The validation
 and test sets are each at the same size as the batch size.
 
-The synthetic data can be found in the auto-generated `data/camera_{}/gauge_{}/` folder. where the `{}` represents 
+The synthetic data can be found in the auto-generated `data/camera_{}/gauge_{}/` folder. where the `{}` represents
 indexes that are generated automatically when calibrating the gauge.
 
 ## Training, Validation and Testing
 
-After calibration, the app will start training the model (when using the `full_demo.py` script). this can be also called 
+After calibration, the app will start training the model (when using the `full_demo.py` script). this can be also called
 manually as follows:
 
 ```python
@@ -247,11 +261,11 @@ analog_gauge.start() # start the training, validation and testing process for th
 ```
 
 The training process will take some time to complete. The app will display the progress in the terminal. Each epoch
-will display the loss for train and validation data. 
+will display the loss for train and validation data.
 
 ### Auto Add Epochs
 
-The loss threshold is used to determine when to add more epochs to the model. If the loss is below the threshold. The 
+The loss threshold is used to determine when to add more epochs to the model. If the loss is below the threshold. The
 default is 0.002. This can be disabled or edited in the project's settings file.
 
 ### Training and Validation Report, Gauge Directory
@@ -260,6 +274,7 @@ When the training process is complete, a testing process will be performed. The 
 performance of the model on the test set and save a visual report of the results in the gauge's directory.
 
 The gauge directory will contain the following files:
+
 - `train` `validation` `test` - the training, validation and test sets containing the data for the model
 - `gauge_net_v1.0_best.pt` - the trained model's weights specific to the gauge - best performing model
 - `gauge_net_v1.0_last.pt` - the trained model's weights specific to the gauge - last epoch model
@@ -274,16 +289,18 @@ The gauge directory will contain the following files:
 and whether the image was augmented or not.
 
 #### Training and Validation Report
+
 The plot should show a converging trend for the loss. The loss should decrease as the epochs increase.
 ![Training and Validation Loss](.readme_media/train_val_loss.png)
 
 #### Test Visual Report
+
 The plot should show the reading for each angle in the test set.
 ![Visual Test](.readme_media/test_report.png)
 
 ### Getting a Reading for a Calibrated Gauge
 
-Finally, in order to get a reading for a calibrated gauge, all that is needed is the calibration's XML file. 
+Finally, in order to get a reading for a calibrated gauge, all that is needed is the calibration's XML file.
 This allows the app to recreate the preprocessing needed for the model to get its readings quicly, and uses
 the trained model to get the reading.
 
@@ -292,34 +309,40 @@ import src.gauges.gauge as g
 
 analog_gauge = g.AnalogGauge('camera_{}_analog_gauge_{}.xml').get_reading('image.png')
 ```
+
 ___
 
-# Academic Report
+# Report
+
 In this part I will dive into the principals and ideas behind the app. This will serve as my submission final
-report. 
+report.
+
 ## Abstract
+
 In order to solve the problem of realtime gauge reading, I used a neural network to predict the angle of
-a needle in an analog gauge. The neural network is trained to predict the angle of a needle based on synthetic 
+a needle in an analog gauge. The neural network is trained to predict the angle of a needle based on synthetic
 data generated after a quick user guided calibration using a "Calibrator App". The offered CNN supplies an elegant,
 easy to deploy solution that is also very flexible. This allows fast deployment in a production environment and better
 results when compared to out of the box classic computer vision solutions such as OpenCV.
 
 ## Introduction
+
 Ships are a complex system of multiple components. As years go by, less available trained personnel are available
-and the level of complexity rises. In order to operate a ship today, many hours are wasted on in person approach to 
+and the level of complexity rises. In order to operate a ship today, many hours are wasted on in person approach to
 reading and storing analog gauges. The app is designed to reduce this waste by automating the process.
 
 Traditionally, CNNs are used in classification or object detection problems. I chose to use a neural network in a regression
 task for the purpose of this project. This allows me to generate a high performance model and also allows me to use
-the Pytorch framework, to use GPU in order to accelerate training and much more. 
+the Pytorch framework, to use GPU in order to accelerate training and much more.
 
 At the first steps of this project, I actually researched for a solution that does not include a neural network, rather
 using OpenCV and classic computer vision approach. This turned out to be a very difficult task, since the automatic
-circle and contour detection were not very accurate and also demanded a very hard calibration process. I also found 
-a few Python 2.7 implementations using OpenCV - but when I tried to use them, they were not able to get the results 
-for our use case, and mostly unable to detect correctly the gauge and needles. 
+circle and contour detection were not very accurate and also demanded a very hard calibration process. I also found
+a few Python 2.7 implementations using OpenCV - but when I tried to use them, they were not able to get the results
+for our use case, and mostly unable to detect correctly the gauge and needles.
 
 ## Define the Problem
+
 Main Problem:
 > Get a reading from an analog gauge remotely, constantly and with minimal human presence
 
@@ -328,22 +351,25 @@ Secondary Problem:
 > It is near impossible to generate consistent and extensive training data for an installed analog gauge
 
 ## Define the Solution
+
 When approaching this problem, one might think that the simplest solution is to install a digital sensor near the gauge
-that will upload the reading constantly. While this is very possible - it takes time, the equipment is expensive 
+that will upload the reading constantly. While this is very possible - it takes time, the equipment is expensive
 and implementation is difficult - it is not the best solution for existing system. Furthermore, many marine companies
 don't allow the owner to perform changes to the mechanical systems due to warranty and service issues.
 
 A camera on the other hand costs ~ 100$, it's easy to install and connect. Even better - most ships already have
-extensive amounts of cameras installed (CCTV). 
+extensive amounts of cameras installed (CCTV).
 
 Since that an installed gauge is impossible to dial into all the available angles, synthetic data is used to train the model.
 
 ## Implementation
+
 Since I have created this project for the Captain-Eye company, the framework for receiving the video feed, image frames
-and storing data is already available. I had to think of a way to implement a light network that will be deployed 
+and storing data is already available. I had to think of a way to implement a light network that will be deployed
 into the existing system.
 
 The offered solution:
+
 - A native calibration app
 - Built in training process generating:
   - Synthetic data
@@ -379,6 +405,7 @@ vision techniques.
 
 The app uses OpenCV to manipulate images. The available tools are available from within the app as a part of the calibration
 process:
+
 - Image cropping
 - Image rotation
 - Perspective Transformation
@@ -394,15 +421,18 @@ to later rotate the needle image and use it to generate synthetic data.
 ## Synthetic Data Generation
 
 The synthetic data is created using the following steps:
+
 ```mermaid
 flowchart LR
 A[Calculate linear space between min and max angles] --> B[Randomly select angles] --> C[Split into training, validation and test sets]
 ```
+
 This is implemented using numpy `linspace` function.
 
 The image writing to files is all done using OpenCV.
 
 ### Model Architecture
+
 The main consideration for building this model was keeping it as light as possible. The model's architecture was built
 using Pytorch. In order to design the CNN layers I read several articles and books and gathered the following principals
 for a regression problem:
@@ -415,16 +445,14 @@ for a regression problem:
 
 $N$ stands for the input number of dimensions (number of pixels in input image for first layer) and $f$ is the filter size.
 $s$ is the stride length. In order to calculate the next layer I simply used the equation above replacing $N$ with the previous
-layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply 
+layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply
 multiplication of the previous layer's output size and the filter size.
 
 Where $N$ is again the input size and $f$ is the filter size for each layer.
 
-All of the above can be found in the ![Excel](docs/layers_design.xlsx) file.   
+All of the above can be found in the ![Excel](./docs/layers_design.xlsx) file.
 
 Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. Using Netron to show the structure:
-
-<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
 
 ### Performance Metrics
 
@@ -432,32 +460,35 @@ In order to calculate loss I chose to use MSE loss. The MSE loss is a good choic
 implemented in Pytorch and is available in the `torch.nn` library. The loss is calculated over the projected angle in
 radians vs the actual angle in radians.
 
+<img src=".readme_media/gauge_net_v1.0_best.png" width="200">
+
 The chosen optimizer is Adam. Adam is also good choice for regression problems and is implemented in Pytorch as well.
 
 ### Results
 
 As shown on the loss graph above, the model is able to predict the angle of the needle accurately. The results are good
-after around 50 epochs of training. After some trial and error, I found that a learning rate of 0.001 is a good choice and 
-around 100 epochs minimize the loss quite well for different gauges. 
+after around 50 epochs of training. After some trial and error, I found that a learning rate of 0.001 is a good choice and
+around 100 epochs minimize the loss quite well for different gauges.
 
 The model was tested on ~10 different gauges and the results are all very good with accurate readings. All gauges were
-tested with a train set of $64 \times 3$ images. If some gauges show poor results, it is very easy to enlarge the train set 
+tested with a train set of $64 \times 3$ images. If some gauges show poor results, it is very easy to enlarge the train set
 and tweak the learning rate or number of epochs to achieve better results.
 
-While I was able to find a few projects dealing with reading analog gauges, I found that the best results were achieved 
+While I was able to find a few projects dealing with reading analog gauges, I found that the best results were achieved
 using my solution. I was able to find one similar implementation using Keras, but their implementation did not include
 the calibration process - images had to be manually cropped and seperated into a masked gauge and needle. [See their paper
 here.](https://objectcomputing.com/resources/publications/sett/june-2019-using-machine-learning-to-read-analog-gauges)
 
 ## Conclusions and Next Steps
 
-The main and secondary problems are solved. The solution is implemented and ready to be deployed, and actually shows 
+The main and secondary problems are solved. The solution is implemented and ready to be deployed, and actually shows
 some demand within customers. The learning in this scenario is well proven to be possible, the model is light and can
 actually run on CPU quite fast. the whole training process takes roughly around 3 minutes for 100 epochs on a standard PC
-with Intel i7 10th generation processor and 16 GB RAM. On a stronger AWS EC2 instance it's a matter of 0.5 minutes using 
+with Intel i7 10th generation processor and 16 GB RAM. On a stronger AWS EC2 instance it's a matter of 0.5 minutes using
 a GPU.
 
 That said, some work can still be done. Suggested improvements regarding this implementation are:
+
 - Include a testing framework for the code
 - Upgrade to Python 3.10.4
 - Improve implementation of the UI app - replace Tkinter with PyQt5
@@ -498,5 +529,3 @@ I have taken a big effort to try and withstand the following:
 - [Linear regression with PyTorch](https://soham.dev/posts/linear-regression-pytorch/) - A blog post on how to use Pytorch to
   implement linear regression.
 - [Machine Learning in Practice: Using Artificial Intelligence to Read Analog Gauges](https://objectcomputing.com/resources/publications/sett/june-2019-using-machine-learning-to-read-analog-gauges)
-
-
