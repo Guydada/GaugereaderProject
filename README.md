@@ -413,18 +413,16 @@ for a regression problem:
 
 > $\frac{\left\lceil N-f+1\ \right\rceil}{s}$
 
-$N$ stands for the input number of dimensions (number of pixels in input image for first layer) and f is the filter size.
-s is the stride length. In order to calculate the next layer I simply used the equation above replacing N with the previous
+$N$ stands for the input number of dimensions (number of pixels in input image for first layer) and $f$ is the filter size.
+$s$ is the stride length. In order to calculate the next layer I simply used the equation above replacing $N$ with the previous
 layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply 
 multiplication of the previous layer's output size and the filter size.
 
-Where $N$ is again the input size and $f is the filter size for each layer.
+Where $N$ is again the input size and $f$ is the filter size for each layer.
 
 All of the above can be found in the ![Excel](docs/layers_design.xlsx) file.   
 
-activation size I simply multiply $N\d
-
-Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. The full achieved structure shows below:
+Using this equation I kept adding layers of Conv2D, followed by ReLU and MaxPool. Using Netron to show the structure:
 
 <img src=".readme_media/gauge_net_v1.0_best.png" width="200">
 
