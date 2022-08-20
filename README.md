@@ -1,12 +1,14 @@
-[![Captain's Eye](.readme_media/logo-white-sm.png)](https://www.captain-eye.com/)
+[![Captain's Eye](.readme_media/logo-white-blue-sm.png)](https://www.captain-eye.com/)
 ***
 Analog Gauge Reading Using CNN Regression
 =======================================
 ***A Deep Learning Approach for Automated Gauge Reading using CNN regression***
 ***
 ![python](https://img.shields.io/badge/🐍Python-v3.8-blue) ![pytorch](https://img.shields.io/badge/🔥pytorch-v1.10.2-red)
-![pytorch](https://img.shields.io/badge/🕶torchvision-v0.11.3-cyan)
-![version](https://img.shields.io/badge/Version-v1.0-green) ![version](https://img.shields.io/badge/platform-Linux|Windows10-blue)
+![torchvision](https://img.shields.io/badge/🕶torchvision-v0.11.3-cyan)
+![version](https://img.shields.io/badge/🆚Version-v1.0-green) ![platform](https://img.shields.io/badge/💻platform-Linux|Windows10-blue)
+![opencv-python](https://img.shields.io/badge/🎨opencv_python-^4.6.0-purple)
+
 ***
 > **Authors:**
 > - [Guy Dahan](https://github.com/Guydada)
@@ -14,7 +16,7 @@ Analog Gauge Reading Using CNN Regression
 > **Submission:**
 > - Supervising company: [Captain's-Eye](https://www.captain-eye.com/)
 > - Project Instructor: Mr. Doron Oizerovich
-> - Project Supervisor: [Dr. Jonatan Ostrometzky](jonatano@tauex.tau.ac.il)
+> - Project Supervisor: [Dr. Jonatan Ostrometzky](https://english.tau.ac.il/profile/jonatano)
 > - Faculty: [Engineering](https://en-engineering.tau.ac.il/)
 > - Department: [Digital Sciences for Hi-Tech](https://en-engineering.tau.ac.il/BSc-in-Digital-Sciences-for-Hi-Tech)
 > - [Tel-Aviv University](https://english.tau.ac.il/)
@@ -26,7 +28,8 @@ Analog Gauge Reading Using CNN Regression
 1. [Requirements](#Requirements)
 2. [Installation](#installation)
 3. [Usage](#Usage)
-4. [Academic Report](#Report)
+4. [Demo](#Demo)
+5. [Academic Report](#Academic Report)
 ___
 ### Full Demo Video  
 [![IMAGE ALT TEXT HERE](.readme_media/youtube.png)](https://www.youtube.com/watch?v=Bdhece7qKJQ)
@@ -84,7 +87,7 @@ $ poetry install
 $ conda create --name <env> --file requirements.txt
 ```
 
-# Settings file
+## Settings file
 
 This project is designed to be a flexible project, which will support quick and easy deployment of the project
 in different operating systems and scenarios. for that purpose, a settings file is created, which will generate
@@ -130,7 +133,7 @@ flowchart LR
 A[Calibration] --> B[Training] --> C[Reading]
 ```
 
-## Demo
+# Demo
 
 > **_NOTE:_** This project was designed completely to fit Captain's-Eye requirements, so it does not have any need for a
 > native CLI
@@ -139,7 +142,7 @@ A[Calibration] --> B[Training] --> C[Reading]
 To perform calibration, a sample image is needed of gauge. Through this example I would walk you through the process
 of calibration, training and reading from a gauge using the code and image sample provided in the `demo` folder.
 
-### Calibrator App
+## Calibrator App
 
 Got to `demo` directory and run:
 
@@ -216,7 +219,7 @@ make sure the calibration is correct.
 > **_NOTE:_** If reading is not correct, it usually indicates that the perspective is not correct. Try to reset and
 > re-calibrate the gauge.
 
-### Synthetic Data
+## Synthetic Data
 
 Synthetic data will be created automatically for the gauge. The synthetic data is created using the calibration data and
 will be split into three sets:
@@ -230,7 +233,7 @@ and test sets are each at the same size as the batch size.
 The synthetic data can be found in the auto-generated `data/camera_{}/gauge_{}/` folder. where the `{}` represents 
 indexes that are generated automatically when calibrating the gauge.
 
-### Training, Validation and Testing
+## Training, Validation and Testing
 
 After calibration, the app will start training the model (when using the `full_demo.py` script). this can be also called 
 manually as follows:
@@ -246,12 +249,12 @@ analog_gauge.start() # start the training, validation and testing process for th
 The training process will take some time to complete. The app will display the progress in the terminal. Each epoch
 will display the loss for train and validation data. 
 
-#### Auto Add Epochs
+### Auto Add Epochs
 
 The loss threshold is used to determine when to add more epochs to the model. If the loss is below the threshold. The 
 default is 0.002. This can be disabled or edited in the project's settings file.
 
-#### Training and Validation Report, Gauge Directory
+### Training and Validation Report, Gauge Directory
 
 When the training process is complete, a testing process will be performed. The testing process will test the
 performance of the model on the test set and save a visual report of the results in the gauge's directory.
@@ -270,11 +273,11 @@ The gauge directory will contain the following files:
 - Additional CSV files - containing the summary for each image used in each set, it's real angle in radians and angles,
 and whether the image was augmented or not.
 
-##### Training and Validation Report
+#### Training and Validation Report
 The plot should show a converging trend for the loss. The loss should decrease as the epochs increase.
 ![Training and Validation Loss](.readme_media/train_val_loss.png)
 
-##### Test Visual Report
+#### Test Visual Report
 The plot should show the reading for each angle in the test set.
 ![Visual Test](.readme_media/test_report.png)
 
@@ -310,9 +313,19 @@ Traditionally, CNNs are used in classification or object detection problems. I c
 task for the purpose of this project. This allows me to generate a high performance model and also allows me to use
 the Pytorch framework, to use GPU in order to accelerate training and much more. 
 
+At the first steps of this project, I actually researched for a solution that does not include a neural network, rather
+using OpenCV and classic computer vision approach. This turned out to be a very difficult task, since the automatic
+circle and contour detection were not very accurate and also demanded a very hard calibration process. I also found 
+a few Python 2.7 implementations using OpenCV - but when I tried to use them, they were not able to get the results 
+for our use case, and mostly unable to detect correctly the gauge and needles. 
+
 ## Define the Problem
-> Get a reading from an analog gauge remotely, constantly and with minimal human presence 
-> Secondary problem: It's near impossible to generate consistent and extensive training data for an installed analof gauge
+Main Problem:
+> Get a reading from an analog gauge remotely, constantly and with minimal human presence
+
+Secondary Problem:
+
+> It is near impossible to generate consistent and extensive training data for an installed analog gauge
 
 ## Define the Solution
 When approaching this problem, one might think that the simplest solution is to install a digital sensor near the gauge
@@ -348,6 +361,10 @@ flowchart TD
   C --> E(Digital Gauge - not implemented)
   A --> F(CNN Mode)
 ```
+
+## Chosen Framework and Libraries
+
+While researching the problem, I found that the Pytorch framework is the most efficient and flexible for the problem.
 
 ## Calibrator App
 
@@ -385,18 +402,6 @@ This is implemented using numpy `linspace` function.
 
 The image writing to files is all done using OpenCV.
 
-## 
-
-### Coding Standards
-
-I have taken a big effort to try and withstand the following:
-
-- [PEP8](https://www.python.org/dev/peps/pep-0008/)
-- OOP principles
-- Documentation
-- Simplicity
-- Minimal code duplication using inheritance and composition
-- Version control is done using [Git](https://git-scm.com/).
 ### Model Architecture
 The main consideration for building this model was keeping it as light as possible. The model's architecture was built
 using Pytorch. In order to design the CNN layers I read several articles and books and gathered the following principals
@@ -406,17 +411,14 @@ for a regression problem:
 - Adding layers until convergence is rather fast
 - Calculating the layers inputs and outputs for the chosen image size
 
-I came across the following equations:
-
 > $\frac{\left\lceil N-f+1\ \right\rceil}{s}$
 
-$N stands for the input number of dimensions (number of pixels in input image for first layer) and f is the filter size.
+$N$ stands for the input number of dimensions (number of pixels in input image for first layer) and f is the filter size.
 s is the stride length. In order to calculate the next layer I simply used the equation above replacing N with the previous
-layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply:
+layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply 
+multiplication of the previous layer's output size and the filter size.
 
-> $N\bulletN\bulletf$
-
-Where $N is again the input size and $f is the filter size for each layer.
+Where $N$ is again the input size and $f is the filter size for each layer.
 
 All of the above can be found in the ![Excel](docs/layers_design.xlsx) file.   
 
@@ -436,25 +438,67 @@ The chosen optimizer is Adam. Adam is also good choice for regression problems a
 
 ### Results
 
+As shown on the loss graph above, the model is able to predict the angle of the needle accurately. The results are good
+after around 50 epochs of training. After some trial and error, I found that a learning rate of 0.001 is a good choice and 
+around 100 epochs minimize the loss quite well for different gauges. 
+
+The model was tested on ~10 different gauges and the results are all very good with accurate readings. All gauges were
+tested with a train set of $64 \times 3$ images. If some gauges show poor results, it is very easy to enlarge the train set 
+and tweak the learning rate or number of epochs to achieve better results.
+
+While I was able to find a few projects dealing with reading analog gauges, I found that the best results were achieved 
+using my solution. I was able to find one similar implementation using Keras, but their implementation did not include
+the calibration process - images had to be manually cropped and seperated into a masked gauge and needle. [See their paper
+here.](https://objectcomputing.com/resources/publications/sett/june-2019-using-machine-learning-to-read-analog-gauges)
+
 ## Conclusions and Next Steps
 
+The main and secondary problems are solved. The solution is implemented and ready to be deployed, and actually shows 
+some demand within customers. The learning in this scenario is well proven to be possible, the model is light and can
+actually run on CPU quite fast. the whole training process takes roughly around 3 minutes for 100 epochs on a standard PC
+with Intel i7 10th generation processor and 16 GB RAM. On a stronger AWS EC2 instance it's a matter of 0.5 minutes using 
+a GPU.
 
-## Footnotes
+That said, some work can still be done. Suggested improvements regarding this implementation are:
+- Include a testing framework for the code
+- Upgrade to Python 3.10.4
+- Improve implementation of the UI app - replace Tkinter with PyQt5
+- Improve circle detection to shorten the time it takes to process the image
+- Add auto unit reading
+- Add object detection for the gauge itself
 
-- <a name="footnote1">1</a>: While currently implemented fully for TF-IDF, we will be implementing it for hybrid
-  approach.
-- <a name="footnote2">2</a>: We use The word "vector" interchangeably, practically speaking, about csr-matrices.
+Furthermore, since I used an OOP approach for this whole project, I actually created the classes for a digital gauge
+reader in the same manner exactly - using the same UI and same network. This might take around 3-4 additional weeks
+of development to implement, but it is very much mostly straightforward from the current framework.
+
+Additionally, I originally designed a database in order to store the reading values over SQL database. However, I found
+that this is not necessary and the data will be handled by the company's backend developers.
+___
+
+# Final Notes
+
+## Coding Standards
+
+I have taken a big effort to try and withstand the following:
+
+- [PEP8](https://www.python.org/dev/peps/pep-0008/)
+- OOP principles
+- Documentation
+- Simplicity
+- Minimal code duplication using inheritance and composition
+- Version control is done using [Git](https://git-scm.com/).
 
 ## References
 
-- [MIND](https://msnews.github.io/), by Microsoft
-- [Microsoft Recommender Repository](https://github.com/microsoft/recommenders)
 - Stevens, E., Antiga, L., & Viehmann, T. (2020).
   [Deep Learning With PyTorch](https://www.google.com/search?client=firefox-b-e&q=deep+learning+with+pytorch+). Manning
   Publications.
-- Wu, F., Qiao, Y., Chen, J. H., Wu, C., Qi, T., Lian, J., ... & Zhou, M. (2020, July). [Mind:
-  A large-scale dataset for news recommendation](https://aclanthology.org/2020.acl-main.331.pdf). In Proceedings of the
-  58th Annual Meeting of the
-  Association for Computational Linguistics (pp. 3597-3606).
+- [ayseceyda/analog-meter-reading-openCV](https://github.com/ayseceyda/analog-meter-reading-openCV) - OpenCV implementation of the
+  analog meter reading app.
+- [Analog Gauge Reader Using OpenCV in Python](https://www.intel.com/content/www/us/en/developer/articles/technical/analog-gauge-reader-using-opencv.html) -
+  Intel article on how to use OpenCV to read analog gauge readings.
+- [Linear regression with PyTorch](https://soham.dev/posts/linear-regression-pytorch/) - A blog post on how to use Pytorch to
+  implement linear regression.
+- [Machine Learning in Practice: Using Artificial Intelligence to Read Analog Gauges](https://objectcomputing.com/resources/publications/sett/june-2019-using-machine-learning-to-read-analog-gauges)
 
 
