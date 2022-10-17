@@ -189,7 +189,7 @@ class GaugeNet(nn.Module):
         if report:
             path = os.path.join(self.directory, f'{set_name}_report.csv')
             df_report.to_csv(path, index=False)
-        return loss.detach().item()  # TODO: Validate this is not causing bugs
+        return loss.detach().item()
 
     def save(self,
              directory: str = None,
@@ -241,6 +241,7 @@ class GaugeNet(nn.Module):
         :return:
         """
         icon = '🧪' if epoch == 'last' else '💪'
+        # icon = '' if epoch == 'last' else ''
         typer.echo(
             'Final loss using {} \t{}\t epoch model weights \t|\t Validation {:0.6f} \t|\t Test: {:0.6f}'.format(
                 epoch.upper(),

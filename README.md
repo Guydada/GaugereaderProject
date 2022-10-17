@@ -390,7 +390,7 @@ flowchart TD
   A --> C(Gauge Classes)
   C --> D(Analog Gauge)
   C --> E(Digital Gauge - not implemented)
-  A --> F(CNN Mode)
+  A --> F(CNN Model)
 ```
 
 ## Chosen Framework and Libraries
