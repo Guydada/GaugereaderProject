@@ -7,3 +7,4 @@
 
 # Ignore dynaconf secret files
 .secrets.*
+/docs/~$poster_gauge_Guy_Dahan.pptx

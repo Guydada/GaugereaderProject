@@ -36,7 +36,7 @@ Analog Gauge Reading Using CNN Regression
 
 ___
 
-# Full Demo Video  
+# Full Demo Video
 
 [![IMAGE ALT TEXT HERE](.readme_media/youtube.png)](https://www.youtube.com/watch?v=Bdhece7qKJQ)
 ___
@@ -61,10 +61,10 @@ ___
 ```
 
 - `src` - Contains the source code of the project
-  - calibrator - Contains the code for the Calibrator App
-  - gauges - Contains the code for the Gauges classes
-  - model - Contains the code for the CNN regression model
-  - utils - Contains the code for the utility functions IE mathematical functions and image processing functions
+    - calibrator - Contains the code for the Calibrator App
+    - gauges - Contains the code for the Gauges classes
+    - model - Contains the code for the CNN regression model
+    - utils - Contains the code for the utility functions IE mathematical functions and image processing functions
 - `docs` - Documentation and an academic [poster](docs/poster_gauge_Guy_Dahan.pdf) made for the project
 - `README.md` - The current document, serving as the final report for this project
 - `settings.toml` - The project's local settings file. When cloned this will generate the default settings.
@@ -78,7 +78,7 @@ ___
 Two ways to install the package:
 
 - Using Anaconda
-- Using pip
+- Using poetry
 
 Clone the repository, and run the following commands in the root directory of the repository:
 
@@ -118,6 +118,8 @@ automatically the project's configuration. The available settings are:
 | BATCH_SIZE                 | 64                           | Batch size for dataset loading and training                                            |
 | BATCH_MULTIPLIER           | 3                            | Batch multiplier for building the dataset                                              |
 | EPOCHS                     | 150                          | Number of epochs for training                                                          |
+| EPOCHS_ADD                 | 20                           | Number of epochs for additional training. Irrelevant when AUTO_ADD_EPOCHS is False.    |
+| MAX_EPOCHS                 | 250                          | Maximum number of epochs for training. Irrelevant when AUTO_ADD_EPOCHS is False        |
 | LEARNING_RATE              | 0.001                        | Learning rate for the model                                                            |
 | AUTO_ADD_EPOCHS            | "True"                       | Automatically add epochs to the model when training if the loss is below the threshold |
 | TORCH_SEED                 | 147                          | Seed for the torch random number generator                                             |
@@ -255,9 +257,10 @@ manually as follows:
 ```python
 import src.gauges.gauge as g
 
-calibration = g.AnalogGauge.calibrate() 
-analog_gauge = g.AnalogGauge(calibration) # calibration is a dictionary with the calibration data. can also be loaded from a file
-analog_gauge.start() # start the training, validation and testing process for the gauge
+calibration = g.AnalogGauge.calibrate()
+analog_gauge = g.AnalogGauge(
+    calibration)  # calibration is a dictionary with the calibration data. can also be loaded from a file
+analog_gauge.initialize()  # start the training, validation and testing process for the gauge
 ```
 
 The training process will take some time to complete. The app will display the progress in the terminal. Each epoch
@@ -286,7 +289,7 @@ The gauge directory will contain the following files:
 - `test_report.png` - a visual reference of the test set results, showing the reading for different angles
 - `training_plots.png` - shows the loss for each epoch of the training set and the validation set
 - Additional CSV files - containing the summary for each image used in each set, it's real angle in radians and angles,
-and whether the image was augmented or not.
+  and whether the image was augmented or not.
 
 #### Training and Validation Report
 
@@ -331,7 +334,8 @@ Ships are a complex system of multiple components. As years go by, less availabl
 and the level of complexity rises. In order to operate a ship today, many hours are wasted on in person approach to
 reading and storing analog gauges. The app is designed to reduce this waste by automating the process.
 
-Traditionally, CNNs are used in classification or object detection problems. I chose to use a neural network in a regression
+Traditionally, CNNs are used in classification or object detection problems. I chose to use a neural network in a
+regression
 task for the purpose of this project. This allows me to generate a high performance model and also allows me to use
 the Pytorch framework, to use GPU in order to accelerate training and much more.
 
@@ -360,7 +364,8 @@ don't allow the owner to perform changes to the mechanical systems due to warran
 A camera on the other hand costs ~ 100$, it's easy to install and connect. Even better - most ships already have
 extensive amounts of cameras installed (CCTV).
 
-Since that an installed gauge is impossible to dial into all the available angles, synthetic data is used to train the model.
+Since that an installed gauge is impossible to dial into all the available angles, synthetic data is used to train the
+model.
 
 ## Implementation
 
@@ -372,9 +377,9 @@ The offered solution:
 
 - A native calibration app
 - Built in training process generating:
-  - Synthetic data
-  - Trained model
-  - Validation and testing reports
+    - Synthetic data
+    - Trained model
+    - Validation and testing reports
 - Built in reading process using the trained model
 
 See below the implementation of the app structure:
@@ -395,7 +400,7 @@ While researching the problem, I found that the Pytorch framework is the most ef
 ## Calibrator App
 
 The app was built entirely using Python TKinter. The app is designed to be used in a desktop environment. The app
-works on both Windows and Linux.  It has built in error handling. The whole calibration process takes around 2 minutes
+works on both Windows and Linux. It has built in error handling. The whole calibration process takes around 2 minutes
 and has top be done only once. Furthermore, the calibration can be later edited simply by editing the XML file.
 
 I used different technics in order to make the process fast and extensible, and also implemented a few smart computer
@@ -403,7 +408,8 @@ vision techniques.
 
 ### Image manipulation
 
-The app uses OpenCV to manipulate images. The available tools are available from within the app as a part of the calibration
+The app uses OpenCV to manipulate images. The available tools are available from within the app as a part of the
+calibration
 process:
 
 - Image cropping
@@ -413,7 +419,8 @@ process:
 
 All of the above were implemented using the OpenCV library.
 
-In addition to that, I have implemented a way to automatically mask the needle image from the gauge image. This allows me
+In addition to that, I have implemented a way to automatically mask the needle image from the gauge image. This allows
+me
 to later rotate the needle image and use it to generate synthetic data.
 
 <img src=".readme_media/cutting.jpg" width="600">
@@ -443,9 +450,12 @@ for a regression problem:
 
 > $\frac{\left\lceil N-f+1\ \right\rceil}{s}$
 
-$N$ stands for the input number of dimensions (number of pixels in input image for first layer) and $f$ is the filter size.
-$s$ is the stride length. In order to calculate the next layer I simply used the equation above replacing $N$ with the previous
-layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is simply
+$N$ stands for the input number of dimensions (number of pixels in input image for first layer) and $f$ is the filter
+size.
+$s$ is the stride length. In order to calculate the next layer I simply used the equation above replacing $N$ with the
+previous
+layer's output size and f with the filter size. for each layer I also had to calculate the activation size, which is
+simply
 multiplication of the previous layer's output size and the filter size.
 
 Where $N$ is again the input size and $f$ is the filter size for each layer.
@@ -467,23 +477,27 @@ The chosen optimizer is Adam. Adam is also good choice for regression problems a
 ### Results
 
 As shown on the loss graph above, the model is able to predict the angle of the needle accurately. The results are good
-after around 50 epochs of training. After some trial and error, I found that a learning rate of 0.001 is a good choice and
+after around 50 epochs of training. After some trial and error, I found that a learning rate of 0.001 is a good choice
+and
 around 100 epochs minimize the loss quite well for different gauges.
 
 The model was tested on ~10 different gauges and the results are all very good with accurate readings. All gauges were
-tested with a train set of $64 \times 3$ images. If some gauges show poor results, it is very easy to enlarge the train set
+tested with a train set of $64 \times 3$ images. If some gauges show poor results, it is very easy to enlarge the train
+set
 and tweak the learning rate or number of epochs to achieve better results.
 
 While I was able to find a few projects dealing with reading analog gauges, I found that the best results were achieved
 using my solution. I was able to find one similar implementation using Keras, but their implementation did not include
-the calibration process - images had to be manually cropped and seperated into a masked gauge and needle. [See their paper
+the calibration process - images had to be manually cropped and seperated into a masked gauge and
+needle. [See their paper
 here.](https://objectcomputing.com/resources/publications/sett/june-2019-using-machine-learning-to-read-analog-gauges)
 
 ## Conclusions and Next Steps
 
 The main and secondary problems are solved. The solution is implemented and ready to be deployed, and actually shows
 some demand within customers. The learning in this scenario is well proven to be possible, the model is light and can
-actually run on CPU quite fast. the whole training process takes roughly around 3 minutes for 100 epochs on a standard PC
+actually run on CPU quite fast. the whole training process takes roughly around 3 minutes for 100 epochs on a standard
+PC
 with Intel i7 10th generation processor and 16 GB RAM. On a stronger AWS EC2 instance it's a matter of 0.5 minutes using
 a GPU.
 
@@ -522,10 +536,13 @@ I have taken a big effort to try and withstand the following:
 - Stevens, E., Antiga, L., & Viehmann, T. (2020).
   [Deep Learning With PyTorch](https://www.google.com/search?client=firefox-b-e&q=deep+learning+with+pytorch+). Manning
   Publications.
-- [ayseceyda/analog-meter-reading-openCV](https://github.com/ayseceyda/analog-meter-reading-openCV) - OpenCV implementation of the
+- [ayseceyda/analog-meter-reading-openCV](https://github.com/ayseceyda/analog-meter-reading-openCV) - OpenCV
+  implementation of the
   analog meter reading app.
-- [Analog Gauge Reader Using OpenCV in Python](https://www.intel.com/content/www/us/en/developer/articles/technical/analog-gauge-reader-using-opencv.html) -
+- [Analog Gauge Reader Using OpenCV in Python](https://www.intel.com/content/www/us/en/developer/articles/technical/analog-gauge-reader-using-opencv.html)
+  -
   Intel article on how to use OpenCV to read analog gauge readings.
-- [Linear regression with PyTorch](https://soham.dev/posts/linear-regression-pytorch/) - A blog post on how to use Pytorch to
+- [Linear regression with PyTorch](https://soham.dev/posts/linear-regression-pytorch/) - A blog post on how to use
+  Pytorch to
   implement linear regression.
 - [Machine Learning in Practice: Using Artificial Intelligence to Read Analog Gauges](https://objectcomputing.com/resources/publications/sett/june-2019-using-machine-learning-to-read-analog-gauges)

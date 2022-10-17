@@ -40,7 +40,7 @@ class Gauge:
             self.calibration['directory'] = self.directory
         self.transfer_learning = transfer_learning
 
-    def start(self):
+    def initialize(self):
         """
         Start the gauge application.
         """
@@ -109,7 +109,8 @@ class AnalogGauge(Gauge):
         self.data_loaders = None
         self.model = None
 
-    def start(self):
+    def initialize(self,
+                   force_train: bool = False):
         # Angles
         self.angles = self.init_angles()
 
@@ -123,18 +124,20 @@ class AnalogGauge(Gauge):
         try:
             self.model = gn.GaugeNet.load(directory=self.directory)
             typer.secho(f'Model loaded from {self.directory}', fg='green')
-        except FileNotFoundError:
-            if settings.DEV == 'True':
-                confirm = True
-            else:
-                confirm = typer.confirm(
-                    f'Start training for this gauge (either transfer learning or learning from scratch)?',
-                    default=True,
-                    abort=True)
+            train = False or force_train
 
-            if confirm:
-                self.model = gn.GaugeNet(directory=self.directory)
-                self.train(transfer_learning=False)
+        except FileNotFoundError:
+            train = True
+
+        if settings.DEV != 'True' and train:
+            train = typer.confirm(
+                f'Start training for this gauge (either transfer learning or learning from scratch)?',
+                default=True,
+                abort=True)
+
+        if train:
+            self.model = gn.GaugeNet(directory=self.directory)
+            self.train(transfer_learning=False)
 
     def init_angles(self):
         min_angle = float(self.calibration['needle']['min_angle'])

@@ -1,0 +1,10 @@
+Add digital sensors - don't forget blank number
+Places with dot are not easily read
+Synthetic data create of all colors and combinations
+
+Don't build your own model, get inception v1 googly net model. if not efficient net b0
+
+all work with 224x224 images. Think of padding
+
+implement augmentation in intensity and color
+

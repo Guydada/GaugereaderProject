@@ -5,7 +5,6 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import netron
 
 from config import settings
 
@@ -37,6 +36,7 @@ class GaugeNet(nn.Module):
                                     nn.Flatten(),
                                     nn.Linear(in_features=1024,
                                               out_features=512),
+                                    nn.ReLU(),
                                     nn.Linear(in_features=512,
                                               out_features=256),
                                     nn.ReLU(),
@@ -45,9 +45,10 @@ class GaugeNet(nn.Module):
                                     nn.ReLU(),
                                     nn.Linear(in_features=128,
                                               out_features=1))
-        for i in [-1, -2]:
-            if self.layers[i]._get_name() not in ['ReLU', 'Dropout']:
-                nn.init.xavier_uniform_(self.layers[i].weight)
+
+        for layer in self.layers:
+            if isinstance(layer, (nn.Conv2d, nn.Linear)):
+                nn.init.xavier_uniform_(layer.weight)
 
         self.device = settings.DEVICE
         self.criterion = torch.nn.MSELoss()
@@ -78,6 +79,9 @@ class GaugeNet(nn.Module):
                        val_loader,
                        test_loader,
                        epochs: int = settings.EPOCHS,
+                       epochs_add: int = settings.EPOCHS_ADD,
+                       auto_add: bool = settings.AUTO_ADD_EPOCHS,
+                       max_epochs: int = settings.MAX_EPOCHS,
                        transfer_learning: bool = True):
         if transfer_learning:
             try:
@@ -88,7 +92,14 @@ class GaugeNet(nn.Module):
         else:
             typer.secho('Starting from scratch. Existing weight files will be deleted', fg='yellow')
 
-        for epoch in range(epochs):
+        epoch = 0
+        thres = settings.LOSS_THRESHOLD
+
+        typer.secho(f'Training initial epochs number: {epochs} '
+                    f'| Max number of epochs: ~ {max_epochs} '
+                    f'| Automatically adding epochs is {"ON" if auto_add else "OFF"}', fg=typer.colors.GREEN)
+
+        while epoch < epochs:
             self.train(True)
             t_loss = self.train_one_epoch(train_loader)
             self.train(False)
@@ -98,11 +109,26 @@ class GaugeNet(nn.Module):
                 self.best_epoch = epoch
                 self.save(epoch='best')
             self.train_report.loc[epoch] = [epoch, t_loss, v_loss]
-            check = '✔' if v_loss <= settings.LOSS_THRESHOLD else '✘'
+            check = '✔' if v_loss <= thres else '❌'
             typer.secho('Finished epoch # {:0>3} \t|\t '
                         'Train loss: {:0.6f} \t|\t Validation loss: {:0.6f}'
                         ' {}'.format(epoch + 1, t_loss, v_loss, check),
                         fg="green")
+
+            if all([auto_add,
+                    epoch == epochs - 1,
+                    self.best_loss > thres,
+                    epoch < max_epochs - 1,
+                    ],
+                   ):
+                epochs_add = min(epochs_add, max_epochs - epoch - 1)
+                typer.secho(f'Validation loss below threshold, adding {epochs_add} epochs', fg='yellow')
+                epochs += epochs_add
+            elif not auto_add and epoch == epochs:
+                break
+
+            epoch += 1
+
         self.save(epoch='last')
         """
         Last epoch is used to test the model on the test set and validation set.
