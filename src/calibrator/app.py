@@ -404,7 +404,7 @@ class Calibrator:
         self.canvas.bind('<ButtonPress-1>', self.on_start)
         self.canvas.bind("<ButtonRelease-1>", self.on_stop)
         self.canvas.bind("<ButtonRelease-3>", self.on_clear)
-        if self.draw_params['tag'] is not 'perspective':
+        if self.draw_params['tag'] == 'perspective':
             self.canvas.bind("<B1-Motion>", self.on_grow)
 
     def draw_point(self, event):
@@ -426,7 +426,7 @@ class Calibrator:
         """
         x, y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
         self.start_x, self.start_y = x, y
-        if self.draw_params['tag'] is 'crop':
+        if self.draw_params['tag'] == 'crop':
             self.draw_params['width'] = 3
         else:
             self.draw_params['width'] = self.brush_size_bar.get()
@@ -467,7 +467,7 @@ class Calibrator:
         self.end_x, self.end_y = int(self.canvas.canvasx(event.x)), int(self.canvas.canvasy(event.y))
         if self.draw_params['tag'] == 'crop':
             self.crop_image()
-        elif self.draw_params['tag'] is 'perspective':
+        elif self.draw_params['tag'] == 'perspective':
             self.draw_change_perspective(event)
         self.stop_actions(event)
 
@@ -1018,7 +1018,7 @@ class AnalogCalibrator(Calibrator):
             return
         for key in self.text_params.keys():
             try:
-                if key is not 'units':
+                if key != 'units':
                     self.calibration[key] = float(self.text_params[key].get())
                 else:  # units
                     units = self.text_params[key].get()
@@ -1247,7 +1247,7 @@ class AnalogCalibrator(Calibrator):
         path = "camera_{}_analog_gauge_{}.xml".format(self.calibration['camera_id'], self.calibration['index'])
         path = os.path.join(settings.XML_FILES_PATH, path)
         xmlr.dict_to_xml(self.calibration, path, gauge=True)
-        typer.secho('Saved parameters to {}'.format(path), fg='green')
+        typer.echo('Saved parameters to {}'.format(path))
 
     def run(self,
             index: int,

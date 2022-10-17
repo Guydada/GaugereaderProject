@@ -109,7 +109,7 @@ automatically the project's configuration. The available settings are:
 | TRAIN_SET_DIR_NAME         | 'train_set'                  | Name of the training set directory                                                     |
 | XML_FILE_NAME              | "camera_{}\_analog_gauge_{}" | Name of the gauge calibration_data file                                                |
 | VALIDATION_SET_DIR_NAME    | 'validation_set'             | Name of the validation set directory                                                   |
-| REPORT_PLT_NAME            | 'test_report.png'            | Name of the report plot                                                                |
+| REPORT_PLT_NAME            | 'visual_test_report.png'     | Name of the report plot                                                                |
 | WINDOW_SIZE                | [1500, 1500]                 | Default Calibrator app window size (width, height)                                     |
 | EDIT_IMAGE_SIZE            | [500, 500]                   | Default edit image window size (pixels)                                                |
 | TRAIN_IMAGE_SIZE           | 64                           | Default train image size (pixels)                                                      |
@@ -286,7 +286,7 @@ The gauge directory will contain the following files:
 - `train_report.csv` - the training report detailing loss for each epoch of the training set
 - `val_report.csv` - the validation report detailing loss for each epoch of the validation set
 - `test_report.csv` - the test report detailing loss for each epoch of the test set
-- `test_report.png` - a visual reference of the test set results, showing the reading for different angles
+- `visual_test_report.png` - a visual reference of the test set results, showing the reading for different angles
 - `training_plots.png` - shows the loss for each epoch of the training set and the validation set
 - Additional CSV files - containing the summary for each image used in each set, it's real angle in radians and angles,
   and whether the image was augmented or not.

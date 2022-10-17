@@ -8,7 +8,7 @@ NEEDLE_IMAGE_NAME = 'needle_image.jpg'  # Name of the needle image
 TRAIN_SET_DIR_NAME = 'train_set'  # Name of the training set directory
 XML_FILE_NAME = "camera_{}_analog_gauge_{}"  # Name of the gauge calibration_data file
 VALIDATION_SET_DIR_NAME = 'validation_set'  # Name of the validation set directory
-REPORT_PLT_NAME = 'test_report.png'  # Name of the report plot
+REPORT_PLT_NAME = 'visual_test_report.png'  # Name of the report plot
 
 # UI parameters
 WINDOW_SIZE = [1500, 1500] # Default Calibrator app window size (width, height)

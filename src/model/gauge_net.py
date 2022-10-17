@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 import typer
 import torch.nn as nn
@@ -96,10 +97,13 @@ class GaugeNet(nn.Module):
         thres = settings.LOSS_THRESHOLD
 
         typer.secho(f'Training initial epochs number: {epochs} '
-                    f'| Max number of epochs: ~ {max_epochs} '
-                    f'| Automatically adding epochs is {"ON" if auto_add else "OFF"}', fg=typer.colors.GREEN)
+                    f'| Max number of epochs: {max_epochs} '
+                    f'| Automatically adding epochs is {"ON" if auto_add else "OFF"}', fg=typer.colors.CYAN)
+
+        train_start_time = time.time()
 
         while epoch < epochs:
+            epoch_start_time = time.time()
             self.train(True)
             t_loss = self.train_one_epoch(train_loader)
             self.train(False)
@@ -110,10 +114,12 @@ class GaugeNet(nn.Module):
                 self.save(epoch='best')
             self.train_report.loc[epoch] = [epoch, t_loss, v_loss]
             check = '✔' if v_loss <= thres else '❌'
-            typer.secho('Finished epoch # {:0>3} \t|\t '
-                        'Train loss: {:0.6f} \t|\t Validation loss: {:0.6f}'
-                        ' {}'.format(epoch + 1, t_loss, v_loss, check),
-                        fg="green")
+            epoch_time = time.time() - epoch_start_time
+
+            typer.echo('Finished epoch # {:0>3} \t|\t '
+                       'Train loss: {:0.6f} \t|\t Validation loss: {:0.6f}'
+                       ' {} \t|\t '
+                       'Epoch time: {:0.2f} MIN'.format(epoch + 1, t_loss, v_loss, check, epoch_time / 60))
 
             if all([auto_add,
                     epoch == epochs - 1,
@@ -128,6 +134,8 @@ class GaugeNet(nn.Module):
                 break
 
             epoch += 1
+        total_time = time.time() - train_start_time / 60
+        typer.secho(f'Training finished in {total_time:0.2f} MIN', fg='yellow')
 
         self.save(epoch='last')
         """
@@ -233,10 +241,9 @@ class GaugeNet(nn.Module):
         :return:
         """
         icon = '🧪' if epoch == 'last' else '💪'
-        typer.secho(
+        typer.echo(
             'Final loss using {} \t{}\t epoch model weights \t|\t Validation {:0.6f} \t|\t Test: {:0.6f}'.format(
                 epoch.upper(),
                 icon,
                 val_loss,
-                test_loss),
-            fg="green")
+                test_loss))

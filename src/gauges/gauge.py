@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from datetime import datetime
+from pathlib import Path
 from torch.utils.data import DataLoader
 
 import src.model.dataset_class as img_dataset
@@ -177,7 +178,7 @@ class AnalogGauge(Gauge):
         self.model.to(settings.DEVICE)
         typer.secho(f'Training model on {settings.DEVICE}, '
                     f'Camera: {self.calibration["camera_id"]} '
-                    f'Gauge index: {self.calibration["index"]} ', fg=typer.colors.GREEN)
+                    f'Gauge index: {self.calibration["index"]} ', fg=typer.colors.BRIGHT_MAGENTA)
         self.model.train_sequence(train_loader=self.data_loaders['train'],
                                   val_loader=self.data_loaders['val'],
                                   test_loader=self.data_loaders['test'],
@@ -216,7 +217,7 @@ class AnalogGauge(Gauge):
         # enlarge spacing between subplots
         fig.subplots_adjust(hspace=0.5)
         fig.savefig(os.path.join(self.directory, settings.REPORT_PLT_NAME))
-        typer.secho(f'Test results saved to {self.directory}', fg=typer.colors.GREEN)
+        typer.echo(f'Test results saved to {self.directory}')
 
     def get_reading(self,
                     frame: str or np.ndarray,
@@ -231,12 +232,15 @@ class AnalogGauge(Gauge):
         :param prints: Print the results
         :return:
         """
+        model = model if model else self.model
         crop_coords = None
         perspective_pts = None
         perspective_changed = False
         if isinstance(frame, str):
-            path = os.path.join(settings.FRAMES_PATH, frame)
+            path = (Path(settings.FRAMES_PATH) / frame).as_posix()
             frame = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+            if frame is None:
+                raise FileNotFoundError(f'Image not found: {path}')
         if restore_edit_steps:
             crop_coords = self.calibration['crop']
             crop_coords = [int(x) for x in crop_coords]
