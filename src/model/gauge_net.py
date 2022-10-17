@@ -134,7 +134,7 @@ class GaugeNet(nn.Module):
                 break
 
             epoch += 1
-        total_time = time.time() - train_start_time / 60
+        total_time = (time.time() - train_start_time) / 60
         typer.secho(f'Training finished in {total_time:0.2f} MIN', fg='yellow')
 
         self.save(epoch='last')

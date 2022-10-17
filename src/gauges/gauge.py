@@ -258,12 +258,11 @@ class AnalogGauge(Gauge):
         reading = self.get_value(rad=rad)
         if prints:
             time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            typer.secho('Time: {} | Gauge: {} | Camera: {} | Reading: {:.2f} {}'.format(time,
-                                                                                        self.calibration['index'],
-                                                                                        self.calibration['camera_id'],
-                                                                                        reading,
-                                                                                        self.calibration['units']),
-                        fg='green')
+            typer.echo('Time: {} | Gauge: {} | Camera: {} | Reading: {:.2f} {}'.format(time,
+                                                                                       self.calibration['index'],
+                                                                                       self.calibration['camera_id'],
+                                                                                       reading,
+                                                                                       self.calibration['units']))
         return reading
 
     def get_value(self,
